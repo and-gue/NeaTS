@@ -316,7 +316,7 @@ void adaptive_approximation_full(const auto &fn, std::ostream &out) {
 }
 
 void lossy_compression_full() {
-    std::string path = "/data/";
+    std::string path = "../data/its/";
     //auto fn = path + std::string(argv[1]);
     std::cout
             << "compressor,dataset,error_bound,uncompressed_bit_size,num_elements,compressed_bit_size,compression_ratio,range"
@@ -334,6 +334,7 @@ void lossy_compression_full() {
     pla_compression<68, double, float, double>(path + std::string("dew-point-temp.bin"), std::cout);
     adaptive_approximation_full<68, double, float, double>(path + std::string("dew-point-temp.bin"), std::cout);
 
+    /*
     lossy_compression<27, double, float, double>(path + std::string("germany.bin"), std::cout);
     pla_compression<27, double, float, double>(path + std::string("germany.bin"), std::cout);
     adaptive_approximation_full<27, double, float, double>(path + std::string("germany.bin"), std::cout);
@@ -366,6 +367,7 @@ void lossy_compression_full() {
     pla_compression<50, long double, double, double>(path + std::string("geolife-lon.bin"), std::cout);
     adaptive_approximation_full<50, long double, double, double>(path + std::string("geolife-lon.bin"), std::cout);
 
+    */
     lossy_compression<238820000, long double, double, double>(path + std::string("basel-temp.bin"), std::cout);
     pla_compression<238820000, long double, double, double>(path + std::string("basel-temp.bin"), std::cout);
     adaptive_approximation_full<238820000, long double, double, double>(path + std::string("basel-temp.bin"),
@@ -385,7 +387,7 @@ void lossy_compression_full() {
 }
 
 void squash_block_compression(const auto &compressor, int level = -1) {
-    std::string path = "/data/";
+    std::string path = "../data/its/";
 
     auto fns = get_files(path);
     //auto compressors = {"lz4"};
@@ -539,7 +541,7 @@ void streaming_compressors_random_access(const std::string &fn_out, size_t block
 }
 
 void neats_compression_full() {
-    std::string path = "/data/";
+    std::string path = "../data/its/";
 
     run<17, double, float, double>(path + std::string("dust.bin"), true);
     run<10, double, float, double>(path + std::string("city_temperature.bin"));
@@ -563,17 +565,16 @@ void neats_compression_full() {
 }
 
 int main(int argc, char *argv[]) {
+    /*
     if (argc != 2) {
         std::cerr << "Usage: " << argv[0] << " <filename>" << std::endl;
         exit(1);
     }
 
     const std::filesystem::path full_filename(argv[1]);
-    //lossy_compression_full();
-    //neats_compression_full(full_filename);
-    squash_full("lz4", full_filename, std::cout, 1000);
-    std::cout << ",";
-    squash_random_access("lz4", full_filename, std::cout, 1000);
+    */
+    lossy_compression_full();
+    neats_compression_full();
 
 
 
