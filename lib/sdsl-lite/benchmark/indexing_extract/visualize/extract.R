@@ -25,7 +25,7 @@ tikz("fig-extract.tex", width = 5.5, height = 6, standAlone = F)
 multi_figure_style( length(data)/2+1, 2 )  
 
 max_space <- 100*2.5 #1.3 # 2.5 #1.8 
-max_time  <- max(raw[["Time"]]) # in microseconds
+max_time  <- _MAX(raw[["Time"]]) # in microseconds
 count <- 0
 nr <- 0
 xlabnr <- (2*(length(data)/2)-1) 

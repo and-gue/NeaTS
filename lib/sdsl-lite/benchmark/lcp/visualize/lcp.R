@@ -45,13 +45,13 @@ for(i in 1:nrow(maindata)){
 			table[l,]["BWTTIME"]<-sprintf("%.2f",data[["BWT_TIME"]])
 			table[l,]["BWTSPACE"]<-round(data[["BWT_MMPEAK"]]*100/size, digits=0)
 			table[l,]["OVERALLTIME"]<-sprintf("%.2f",data[["SA_TIME"]]+data[["BWT_TIME"]]+data[[paste(lcp_config[["LCP_ID"]][l],"_TIME",sep="")]])
-			table[l,]["OVERALLSPACE"]<-round(max(data[["SA_MMPEAK"]],data[["BWT_MMPEAK"]],data[[paste(lcp_config[["LCP_ID"]][l],"_MMPEAK",sep="")]])*100/size, digits=0)
+			table[l,]["OVERALLSPACE"]<-round(_MAX(data[["SA_MMPEAK"]],data[["BWT_MMPEAK"]],data[[paste(lcp_config[["LCP_ID"]][l],"_MMPEAK",sep="")]])*100/size, digits=0)
 		}
 		else{
 			table[l,]["BWTTIME"]<-"-"
 			table[l,]["BWTSPACE"]<-"-"
 			table[l,]["OVERALLTIME"]<-sprintf("%.2f",data[["SA_TIME"]]+data[[paste(lcp_config[["LCP_ID"]][l],"_TIME",sep="")]])
-			table[l,]["OVERALLSPACE"]<-round(max(data[["SA_MMPEAK"]],data[[paste(lcp_config[["LCP_ID"]][l],"_MMPEAK",sep="")]])*100/size, digits=0)
+			table[l,]["OVERALLSPACE"]<-round(_MAX(data[["SA_MMPEAK"]],data[[paste(lcp_config[["LCP_ID"]][l],"_MMPEAK",sep="")]])*100/size, digits=0)
 		}
 
 		table[l,]["LCPTIME"]<-sprintf("%.2f",data[[paste(lcp_config[["LCP_ID"]][l],"_TIME",sep="")]])

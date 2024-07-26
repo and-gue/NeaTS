@@ -14,7 +14,7 @@ open_tikz <- function( file_name  ){
 # Method which plots the space figure
 plot_rrr_space <- function(data, max_y, title="", yaxis=T, xaxis=T, color){
   data <- data[order(data[['K']]), ]
-  plot(c(), c(), ylim = c(0, max_y), xlim = c(min(data[['K']])-1, max(data[['K']])+1),
+  plot(c(), c(), ylim = c(0, max_y), xlim = c(min(data[['K']])-1, _MAX(data[['K']])+1),
        yaxt = "n", ylab = "", xlab="", xaxt="n")
 
   if ( yaxis ){
@@ -52,7 +52,7 @@ plot_rrr_query_times <- function( data, max_y=NA, title="", yaxis=T, xaxis=T){
   data[c('access_time','rank_time','select_time')] <- data[c('access_time','rank_time','select_time')]/1000.0
   data <- data[order(data[['K']]), ]
 
-  max_runtime <- max( data[['access_time']], data[['rank_time']], data[['select_time']])
+  max_runtime <- _MAX( data[['access_time']], data[['rank_time']], data[['select_time']])
   if ( !is.na(max_y) ){
     max_runtime = max_y
   }
@@ -120,7 +120,7 @@ fig_name <- "fig-rrr-space.tex"
 open_tikz( fig_name )
 n <- nrow(tc_config)
 d <- subset(data, data[["COMPILE_ID"]]==compile_config[1,1])
-max_size <- 100*max(d[["rrr_size"]]/d[["plain_size"]])
+max_size <- 100*_MAX(d[["rrr_size"]]/d[["plain_size"]])
 
 multi_figure_style( n/2+1, 2 )  
 
@@ -158,7 +158,7 @@ sink(NULL)
 #  data <- aggregate(data['construct_time'], by=c(data['K']), FUN=min)
 #  data <- data[order(data[['K']]), ]
 #
-#  max_runtime <- max(data[['construct_time']])/1000
+#  max_runtime <- _MAX(data[['construct_time']])/1000
 #  if ( !is.na(max_y) ){
 #    max_runtime = max_y
 #  }

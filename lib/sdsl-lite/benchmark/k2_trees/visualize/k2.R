@@ -26,7 +26,7 @@ plot_size_figure <-function(data,heading,ylab=F){
 		par(mar=c(3,10,3,0))
 	}
 
-	plot(c(),c(),ylim=c(0,(length(data)*0.5)+0.2),xlim=c(0,max(101,(max(data)+1))),xlab="",ylab="",xaxt="n",yaxt="n")
+	plot(c(),c(),ylim=c(0,(length(data)*0.5)+0.2),xlim=c(0,_MAX(101,(_MAX(data)+1))),xlab="",ylab="",xaxt="n",yaxt="n")
 
 	#label y-axis
 	if(ylab){
@@ -43,14 +43,14 @@ plot_size_figure <-function(data,heading,ylab=F){
 		offset=offset+0.5
 	}
 
-    #abline(v=c(axis(1)/2,max(axis(1)/2)+axis(1)/2), col="gray")
+    #abline(v=c(axis(1)/2,_MAX(axis(1)/2)+axis(1)/2), col="gray")
     abline(v=c(axis(1),axis(1)+(axis(1)[2]-axis(1)[1])/2),col="gray")
 	abline(v=100, col="red")
 	draw_figure_heading(heading)
 }
 
 #Method which plots the a time figure
-plot_time_figure <-function(data,heading,ylab=T,xlab=T,constructor=F,xmax=max(data)){
+plot_time_figure <-function(data,heading,ylab=T,xlab=T,constructor=F,xmax=_MAX(data)){
 	#set margin
 	par(mar=c(3,2,2,0))
 	if(ylab){
@@ -108,7 +108,7 @@ for(tc in unique(maindata$TC_ID)){
 	layout(matrix(c(1,2,3), nrow=3, ncol=1, byrow = TRUE),
 	   widths=c(1,1,1), heights=c(1))
 
-    xmax<-max(data[c('adj_time', 'neighbors_time','reverse_neighbors_time')])
+    xmax<-_MAX(data[c('adj_time', 'neighbors_time','reverse_neighbors_time')])
 	a <-data['adj_time']
     neighbors <-data['neighbors_time']
     reverse_neighbors <-data['reverse_neighbors_time']

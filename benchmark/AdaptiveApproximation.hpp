@@ -51,9 +51,9 @@ class adaptive_approximation {
 
         std::pair<poly_t, poly_t> compute_bounds(const data_point &p_next) {
             auto l = poly_t{static_cast<poly_t>(p_next.second - error_bound - p_start.second) /
-                           static_cast<poly_t>(p_next.first - p_start.first)};
+                            static_cast<poly_t>(p_next.first - p_start.first)};
             auto u = poly_t{static_cast<poly_t>(p_next.second + error_bound - p_start.second) /
-                           static_cast<poly_t> (p_next.first - p_start.first)};
+                            static_cast<poly_t> (p_next.first - p_start.first)};
             return std::make_pair(l, u);
         }
 
@@ -142,7 +142,7 @@ class adaptive_approximation {
 public:
     using pla_t = linear_approximation;
     using pea_t = exponential_approximation;
-    using poa_t = fa::pfa::piecewise_optimal_approximation<x_t, y_t, poly_t, T1, T2>;
+    using poa_t = pfa::piecewise_optimal_approximation<x_t, y_t, poly_t, T1, T2>;
     using convex_polygon_t = poa_t::convex_polygon_t;
     using pqa_t = poa_t::pqa_t;
 
@@ -412,10 +412,10 @@ public:
 
     [[nodiscard]] size_t size_in_bits() const {
         return starting_positions.size() * sizeof(uint32_t) * 8 +
-                coefficients_t0.size() * sizeof(T1) * 8 +
-                coefficients_t1.size() * sizeof(T1) * 8 +
-                coefficients_t2.size() * sizeof(T2) * 8 +
-                model_types.size() * 2;
+               coefficients_t0.size() * sizeof(T1) * 8 +
+               coefficients_t1.size() * sizeof(T1) * 8 +
+               coefficients_t2.size() * sizeof(T2) * 8 +
+               model_types.size() * 2;
     }
 
     std::vector<y_t> decompress() const {

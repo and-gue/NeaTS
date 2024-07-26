@@ -18,13 +18,14 @@ template<typename T = double>
 void gorilla_compression(const std::string &in_filename, std::ostream &out, size_t block_size = 1000) {
     const auto data = fa::utils::read_data_binary<T, T>(in_filename, !std::is_floating_point_v<T>);
     const auto n = data.size();
-    const auto num_blocks = n / block_size;
+
+    const auto num_blocks = (n / block_size) + (n % block_size != 0);
 
     size_t total_compressed_size = 0;
     double compression_time = 0;
     double decompression_time = 0;
 
-    for (auto ib = 0; ib < num_blocks + 1; ++ib) {
+    for (auto ib = 0; ib < num_blocks; ++ib) {
         const auto bs = std::min(block_size, n - ib * block_size);
         const auto data_block = std::vector<T>(data.begin() + (ib * (int64_t) block_size),
                                                data.begin() + (ib * (int64_t) block_size) + (int64_t) bs);
@@ -62,13 +63,14 @@ void tsxor_compression(const std::string &filename, std::ostream &out, size_t bl
     const auto data = fa::utils::read_data_binary<double, double>(filename, false);
 
     const auto n = data.size();
-    const auto num_blocks = n / block_size;
+
+    const auto num_blocks = (n / block_size) + (n % block_size != 0);
 
     size_t total_compressed_size = 0;
     double compression_time = 0;
     double decompression_time = 0;
 
-    for (auto ib = 0; ib < num_blocks + 1; ++ib) {
+    for (auto ib = 0; ib < num_blocks; ++ib) {
         const auto bs = std::min(block_size, n - ib * block_size);
 
         const auto data_block = std::vector<double>(data.begin() + (ib * (int64_t) block_size),
@@ -108,7 +110,8 @@ void chimp_compression(const std::string &filename, std::ostream &out, size_t bl
     const auto data = fa::utils::read_data_binary<double, double>(filename, false);
 
     const auto n = data.size();
-    const auto num_blocks = n / block_size;
+
+    const auto num_blocks = (n / block_size) + (n % block_size != 0);
 
     size_t total_compressed_size = 0;
     double compression_time = 0;
@@ -155,13 +158,13 @@ void chimp128_compression(const std::string &filename, std::ostream &out, size_t
 
     const auto data = fa::utils::read_data_binary<double, double>(filename, false);
     const auto n = data.size();
-    const auto num_blocks = n / block_size;
+    const auto num_blocks = (n / block_size) + (n % block_size != 0);
 
     size_t total_compressed_size = 0;
     double compression_time = 0;
     double decompression_time = 0;
 
-    for (auto ib = 0; ib < num_blocks + 1; ++ib) {
+    for (auto ib = 0; ib < num_blocks; ++ib) {
         const auto bs = std::min(block_size, n - ib * block_size);
 
         const auto data_block = std::vector<double>(data.begin() + (ib * (int64_t) block_size),
@@ -193,14 +196,14 @@ void chimp128_compression(const std::string &filename, std::ostream &out, size_t
         decompression_time += duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
 
         /*
-
         for (auto j = 0; j < data_block.size(); ++j) {
             if (data[j] != decompressed_data[j]) {
                 std::cout << "i: " << j << ", " << decompressed_data[j] << ", " << data_block[j] << std::endl;
                 //throw std::runtime_error("Error during decompression!");
             }
         }
-         */
+        */
+
     }
 
     out << n << ','; // #values
@@ -215,11 +218,11 @@ void streaming_compressors_random_access(const std::string &in_fn,
 
     const auto data = fa::utils::read_data_binary<double, double>(in_fn, false);
     const auto n = data.size(); // number of values
-    const auto num_blocks = n / block_size;
+    const auto num_blocks = (n / block_size) + (n % block_size != 0);
 
     std::vector<std::unique_ptr<T>> compressed_data_blocks{};
     size_t total_compressed_size = 0;
-    for (auto ib = 0; ib < num_blocks + 1; ++ib) {
+    for (auto ib = 0; ib < num_blocks; ++ib) {
         const auto bs = std::min(block_size, n - ib * block_size);
         auto data_block = std::vector<double>(data.begin() + (ib * (int64_t) block_size),
                                               data.begin() + (ib * (int64_t) block_size) + (int64_t) bs);

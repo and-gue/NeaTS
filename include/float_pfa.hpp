@@ -3,7 +3,7 @@
 #include "float_coefficient_space.hpp"
 #include "algorithms.hpp"
 
-namespace fa::pfa {
+namespace pfa {
 
     template<typename X = uint32_t, typename Y = int64_t, typename polygon_t = double, typename T1 = float, typename T2 = double>
     struct piecewise_optimal_approximation {
@@ -13,7 +13,7 @@ namespace fa::pfa {
 
         using data_point = typename std::pair<x_t, y_t>;
 
-        using convex_polygon_t = fa::fcs::convex_polygon<polygon_t>;
+        using convex_polygon_t = pfa::convex_polygon<polygon_t>;
         using upperbound_t = typename convex_polygon_t::upperbound_t;
         using lowerbound_t = typename convex_polygon_t::lowerbound_t;
         using boundaries_t = typename convex_polygon_t::boundaries_t;
@@ -21,18 +21,21 @@ namespace fa::pfa {
 
         using segment_t = typename convex_polygon_t::segment_t;
 
-        enum class approx_fun_t {
-            Linear = 0, Exponential = 1, Quadratic = 2, Sqrt = 3, COUNT = 4
+        enum class approx_fun_t : uint8_t {
+            Linear = 0,
+            Exponential = 1,
+            Quadratic = 2,
+            Sqrt = 3,
+            COUNT = 4
         };
 
-    private:
+    public:
 
         struct piecewise_linear_approximation {
 
             int64_t epsilon{};
 
             constexpr explicit piecewise_linear_approximation() : epsilon{2L} {}
-
             constexpr explicit piecewise_linear_approximation(const int64_t &e) : epsilon{e} {}
 
             boundaries_t compute_bounds(const data_point &p) const {
@@ -61,8 +64,13 @@ namespace fa::pfa {
 
                 inline y_t operator()(x_t i) const {
                     assert(i >= starting_position);
-                    const T2 x = i - starting_position;
+                    const double x = i - starting_position;
                     return std::ceil(a * x + b);
+                }
+
+                [[nodiscard]] constexpr static size_t lossy_size_in_bits() {
+                    // 3 due to the random access with the type of the function (model_types0 + model_types1 + qbv)
+                    return (sizeof(x_t) + sizeof(T1) + sizeof(T2)) * 8 + 2; //std::log2((uint64_t) approx_fun_t::COUNT);
                 }
 
                 [[nodiscard]] constexpr static size_t size_in_bits() {
@@ -101,7 +109,7 @@ namespace fa::pfa {
                     auto z = static_cast<T2>(s1 - starting_position);
                     auto y = a * z + b;
 
-                    return linear{s1, a, y};
+                    return linear{s1, a, static_cast<T2>(y)};
                 }
 
                 inline std::tuple<std::optional<x_t>, std::optional<T1>, T1, T2> parameters() const {
@@ -132,13 +140,13 @@ namespace fa::pfa {
                 if (g.empty()) {
                     //auto d = segment_t::from_points(point_t{0.0, static_cast<T2>(p.second)}, point_t{0.0, static_cast<T2>(p.second)});
                     //return linear{p.first, 0.0, static_cast<T2>(p.second), d};
-                    return linear{p.first, 0.0, static_cast<T2>(p.second)};
+                    return linear{p.first, static_cast<T1>(0.0), static_cast<T2>(p.second)};
                 } else if (g.is_init()) {
                     auto [u0, l0] = g.init.value();
                     auto b = (u0._s._q + l0._s._q) / 2.0;
                     //auto d = segment_t::from_points(point_t{0.0, static_cast<T2>(b)}, point_t{0.0, static_cast<T2>(b)});
                     //return linear{p.first, 0.0, static_cast<T2>(b), d};
-                    return linear{p.first, 0.0, static_cast<T2>(b)};
+                    return linear{p.first, static_cast<T1>(0.0), static_cast<T2>(b)};
                 } else {
                     auto pl = g.ul();
                     auto pr = g.lr();
@@ -253,8 +261,13 @@ namespace fa::pfa {
 
                 inline y_t operator()(x_t i) const {
                     assert(i >= starting_position);
-                    const T2 x = i - (starting_position - d);
+                    const double x = i - (starting_position - d);
                     return std::round(a * std::sqrt(x) + b);
+                }
+
+                [[nodiscard]] constexpr static size_t lossy_size_in_bits() {
+                    // 3 due to the random access with the type of the function (model_types0 + model_types1 + qbv)
+                    return (sizeof(x_t) + sizeof(x_t) + sizeof(T1) + sizeof(T2)) * 8 + 2; //std::log2((uint64_t) approx_fun_t::COUNT);
                 }
 
                 [[nodiscard]] constexpr static size_t size_in_bits() {
@@ -301,13 +314,13 @@ namespace fa::pfa {
                 if (g.empty()) {
                     //auto _d = segment_t::from_points(point_t{0.0, static_cast<T2>(p.second)}, point_t{0.0, static_cast<T2>(p.second)});
                     //return sqrt{p.first, 0.0, static_cast<T2>(p.second), _d};
-                    return sqrt{p.first, 0.0, static_cast<T2>(p.second)};
+                    return sqrt{p.first, static_cast<T1>(0.0), static_cast<T2>(p.second)};
                 } else if (g.is_init()) {
                     auto [u0, l0] = g.init.value();
                     auto b = (u0._s._q + l0._s._q) / 2.0;
                     //auto _d = segment_t::from_points(point_t{0.0, static_cast<T2>(b)}, point_t{0.0, static_cast<T2>(b)});
                     //return sqrt{p.first, 0.0, static_cast<T2>(b), _d};
-                    return sqrt{p.first, 0.0, static_cast<T2>(b)};
+                    return sqrt{p.first, static_cast<T1>(0.0), static_cast<T2>(b)};
                 } else {
                     auto pl = g.ul();
                     auto pr = g.lr();
@@ -354,21 +367,6 @@ namespace fa::pfa {
                         result.emplace_back(f);
                         g.clear();
                         last = --i;
-                        /*
-                        for (auto j = f.starting_position; j < last; ++j) {
-                            auto approx = f(j + 1);
-                            auto y = *(begin + j);
-                            auto err = std::abs(approx - y);
-                            if (err > (epsilon + 1)) {
-                                std::cout << approx  << "!=" << y << std::endl;
-                                std::cout << "INDEX: " << i << std::endl;
-                                std::cout << "START: " << f.starting_position << std::endl;
-                                std::cout << "END: " << last << std::endl;
-                                std::cout << "ERROR" << std::endl;
-                            }
-                        }
-                        */
-
                     }
                 }
 
@@ -395,8 +393,10 @@ namespace fa::pfa {
 
                 auto m = -static_cast<convex_polygon_t::value_t>(p.first);
 
-                auto _uq = log(static_cast<convex_polygon_t::value_t>(p.second + epsilon));
-                auto _lq = log(static_cast<convex_polygon_t::value_t>(p.second - epsilon));
+                typename convex_polygon_t::value_t _uq, _lq;
+
+                _uq = std::log(static_cast<convex_polygon_t::value_t>(p.second + epsilon));
+                _lq = std::log(static_cast<convex_polygon_t::value_t>(p.second - epsilon));
 
                 lowerbound_t l{typename convex_polygon_t::segment_t(m, _lq)};
                 upperbound_t u{typename convex_polygon_t::segment_t(m, _uq)};
@@ -417,13 +417,18 @@ namespace fa::pfa {
 
                 inline y_t operator()(x_t i) const {
                     assert(i >= starting_position);
-                    const T2 x = i - starting_position;
-                    return std::round(b * std::exp(a * x));
+                    const double x = i - starting_position;
+                    return round(b * std::exp(a * x));
                 }
 
                 [[nodiscard]] constexpr static size_t size_in_bits() {
                     // 3 due to the random access with the type of the function (model_types0 + model_types1 + qbv)
                     return (sizeof(x_t) + sizeof(T1) + sizeof(T2)) * 8 + 3;//std::log2((uint64_t)approx_fun_t::COUNT);
+                }
+
+                [[nodiscard]] constexpr static size_t lossy_size_in_bits() {
+                    // 3 due to the random access with the type of the function (model_types0 + model_types1 + qbv)
+                    return (sizeof(x_t) + sizeof(T1) + sizeof(T2)) * 8 + 2;//std::log2((uint64_t)approx_fun_t::COUNT);
                 }
 
                 constexpr x_t get_start() const {
@@ -460,7 +465,7 @@ namespace fa::pfa {
                 inline exponential copy(x_t s1) const {
                     auto z = static_cast<T2>(s1 - starting_position);
                     auto b1 = b * std::exp(a * z);
-                    return exponential{s1, a, b1};
+                    return exponential{s1, a, static_cast<T2>(b1)};
                 }
 
                 constexpr inline approx_fun_t type() {
@@ -487,19 +492,23 @@ namespace fa::pfa {
                 if (g.empty()) {
                     //auto d = segment_t::from_points(point_t{0.0, static_cast<T2>(p.second)}, point_t{0.0, static_cast<T2>(p.second)});
                     //return exponential{p.first, 0.0, static_cast<T2>(p.second), d};
-                    return exponential{p.first, 0.0, static_cast<T2>(p.second)};
+                    return exponential{p.first, static_cast<T1>(0.0), static_cast<T2>(p.second)};
                 } else if (g.is_init()) {
                     auto [u0, l0] = g.init.value();
                     auto b = (u0._s._q + l0._s._q) / 2.0;
                     //auto d = segment_t::from_points(point_t{0.0, static_cast<T2>(b)}, point_t{0.0, static_cast<T2>(b)});
                     //return exponential{p.first, 0.0, static_cast<T2>(std::exp(b)), d};
-                    return exponential{p.first, 0.0, static_cast<T2>(std::exp(b))};
+                    return exponential{p.first, static_cast<T1>(0.0), static_cast<T2>(std::exp(b))};
                 } else {
                     auto pl = g.ul();
                     auto pr = g.lr();
 
+
                     auto mp_a = (pl.x() + pr.x()) / 2.0;
                     auto mp_b = (pr.y() + pl.y()) / 2.0;
+
+                    //auto mp_a = pl.x();
+                    //auto mp_b = pl.y();
 
                     //auto d = segment_t::from_points(pl, pr);
                     //return exponential{p.first, static_cast<T1>(mp_a), static_cast<T2>(std::exp(mp_b)), d};
@@ -603,8 +612,13 @@ namespace fa::pfa {
 
                 inline y_t operator()(x_t i) const {
                     assert(i >= starting_position);
-                    const T2 x = (i - 1) - starting_position;
+                    const double x = (i - 1) - starting_position;
                     return std::ceil(a * x * x + b * x + c);
+                }
+
+                [[nodiscard]] constexpr static size_t lossy_size_in_bits() {
+                    // 3 due to the random access with the type of the function (model_types0 + model_types1 + qbv)
+                    return (sizeof(x_t) + (sizeof(T1) * 2) + sizeof(T2)) * 8 + 2;//std::log2((uint64_t)approx_fun_t::COUNT);
                 }
 
                 [[nodiscard]] constexpr static size_t size_in_bits() {
@@ -689,13 +703,13 @@ namespace fa::pfa {
                 if (g.empty()) {
                     //auto d = segment_t::from_points(point_t{0.0, static_cast<T2>(p.second)}, point_t{0.0, static_cast<T2>(p.second)});
                     //return quadratic{p.first, 0.0, 0.0, static_cast<T2>(p.second), d};
-                    return quadratic{p.first, 0.0, 0.0, static_cast<T2>(p.second)};
+                    return quadratic{p.first, static_cast<T1>(0.0), static_cast<T1>(0.0), static_cast<T2>(p.second)};
                 } else if (g.is_init()) {
                     auto [u0, l0] = g.init.value();
                     auto b = (u0._s._q + l0._s._q) / 2.0;
                     //auto d = segment_t::from_points(point_t{0.0, static_cast<T2>(b)}, point_t{0.0, static_cast<T2>(b)});
                     //return quadratic{p.first, 0.0, static_cast<T1>(b), static_cast<T2>(p.second), d};
-                    return quadratic{p.first, 0.0, static_cast<T1>(b), static_cast<T2>(p.second)};
+                    return quadratic{p.first, static_cast<T1>(0.0), static_cast<T1>(b), static_cast<T2>(p.second)};
                 } else {
                     auto pl = g.ul();
                     auto pr = g.lr();
@@ -743,24 +757,6 @@ namespace fa::pfa {
                         g.clear();
                         last_starting_point = data_point{i, last_value};
                         p0.second = last_value;
-
-                        /*
-                        for (auto j = f.starting_position; j < i; ++j) {
-                            auto approx = f(j + 1);
-                            auto y = *(begin + j);
-                            auto err = static_cast<y_t>(y - approx);
-                            if ((err > 0 && err > epsilon) || (err < 0 && err < (-epsilon - 1))) {
-                                std::cout << approx  << "!=" << y << std::endl;
-                                std::cout << "INDEX: " << i << std::endl;
-                                std::cout << "START: " << f.starting_position << std::endl;
-                                std::cout << "ERROR" << std::endl;
-
-                                exit(1);
-                            }
-                        }
-                        */
-
-
                     }
                 }
 
@@ -774,14 +770,54 @@ namespace fa::pfa {
             }
         };
 
-
-
     public:
+
         using pla_t = piecewise_linear_approximation;
-        //using ppa_t = piecewise_power_approximation;
         using psa_t = piecewise_sqrt_approximation;
         using pea_t = piecewise_exponential_approximation;
         using pqa_t = piecewise_quadratic_approximation;
+
+        using pna_t = std::variant<pla_t, pea_t, pqa_t, psa_t>;
+        using vec_pna_t = typename std::vector<pna_t>;
+        using pna_fun_t = std::variant<typename pla_t::fun_t, typename pea_t::fun_t, typename pqa_t::fun_t, typename psa_t::fun_t>;
+
+        static pna_t make_model(approx_fun_t mt, int64_t epsilon) {
+            switch (mt) {
+                case approx_fun_t::Linear:
+                    return pla_t{epsilon};
+                case approx_fun_t::Quadratic:
+                    return pqa_t{epsilon};
+                case approx_fun_t::Sqrt:
+                    return psa_t{epsilon};
+                case approx_fun_t::Exponential:
+                    return pea_t{epsilon};
+                default:
+                    throw std::runtime_error("Not implemented");
+            }
+        }
+
+        struct piecewise_non_linear_approximation {
+
+            static inline auto make_fun(approx_fun_t mt, x_t start_pos, std::optional<x_t> d, std::optional<T1> t0, T1 t1, T2 t2) {
+                switch (mt) {
+                    case approx_fun_t::Linear:
+                        assert(!d.has_value());
+                        return pna_fun_t{typename pla_t::fun_t{start_pos, t1, t2}};
+                    case approx_fun_t::Quadratic:
+                        assert(!d.has_value());
+                        assert(t0.has_value());
+                        return pna_fun_t{typename pqa_t::fun_t{start_pos, t0.value(), t1, t2}};
+                    case approx_fun_t::Sqrt:
+                        assert(d.has_value());
+                        return pna_fun_t{typename psa_t::fun_t{start_pos, d.value(), t1, t2}};
+                    case approx_fun_t::Exponential:
+                        assert(!d.has_value());
+                        return pna_fun_t{typename pea_t::fun_t{start_pos, t1, t2}};
+                    default:
+                        throw std::runtime_error("Not implemented");
+                }
+            }
+        };
 
         template<int64_t error, typename... Pfa> class pfa_t {
             std::tuple<Pfa...> pfa;
@@ -815,78 +851,6 @@ namespace fa::pfa {
             }
         };
 
-        template<uint64_t max_error, typename... Pfa> class models {
-
-            template<std::size_t... Is>
-            constexpr static auto make_models(std::index_sequence<Is...>) {
-                return std::make_tuple(pfa_t<BPC_TO_EPSILON(Is + (Is >= 1)), Pfa...>{}...);
-            }
-
-            decltype(make_models(std::make_index_sequence<max_error>{})) m;
-
-            template<typename Tuple, typename F, std::size_t... Is>
-            constexpr void for_each_impl(Tuple&& t, F&& f, std::index_sequence<Is...>) const {
-                (f(std::get<Is>(t), Is), ...);
-            }
-
-        public:
-
-            constexpr models() : m() {
-                m = make_models(std::make_index_sequence<max_error>{});
-            }
-
-            template<typename F>
-            constexpr void for_each(F&& f) const {
-                for_each_impl(m, f, std::make_index_sequence<max_error>{});
-            }
-
-            constexpr static auto total_size() {
-                return sizeof...(Pfa) * max_error;
-            }
-
-            using out_t = typename pfa_t<max_error, Pfa...>::out_t;
-        };
-
-        template<uint64_t max_error, typename T = models<max_error, pla_t, pea_t, pqa_t, psa_t>>
-        struct models_t {
-            using tm = T;
-
-            static inline auto make_fun(approx_fun_t mt, x_t start_pos, std::optional<x_t> d, std::optional<T1> t0, T1 t1, T2 t2) {
-                switch (mt) {
-                    case approx_fun_t::Linear:
-                        assert(!d.has_value());
-                        return typename tm::out_t{typename pla_t::fun_t{start_pos, t1, t2}};
-                    case approx_fun_t::Quadratic:
-                        assert(!d.has_value());
-                        assert(t0.has_value());
-                        return typename tm::out_t{typename pqa_t::fun_t{start_pos, t0.value(), t1, t2}};
-                    case approx_fun_t::Sqrt:
-                        assert(d.has_value());
-                        return typename tm::out_t{typename psa_t::fun_t{start_pos, d.value(), t1, t2}};
-                    case approx_fun_t::Exponential:
-                        assert(!d.has_value());
-                        return typename tm::out_t{typename pea_t::fun_t{start_pos, t1, t2}};
-                    default:
-                        throw std::runtime_error("Not implemented");
-                }
-            }
-        };
-
-        template<uint64_t max_error, typename T = models<max_error, pla_t>>
-        struct la_vector {
-            using tm = T;
-
-
-            static inline auto make_fun(approx_fun_t mt, x_t start_pos, std::optional<x_t> d, std::optional<T1> t0, T1 t1, T2 t2) {
-                switch (mt) {
-                    case approx_fun_t::Linear:
-                        assert(!d.has_value());
-                        return typename tm::out_t{typename pla_t::fun_t{start_pos, t1, t2}};
-                    default:
-                        throw std::runtime_error("Not implemented");
-                }
-            }
-        };
 
     };
 }

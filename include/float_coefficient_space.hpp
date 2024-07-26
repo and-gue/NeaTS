@@ -7,13 +7,10 @@
 #include <cmath>
 #include <cassert>
 #include <optional>
-#include <boost/geometry.hpp>
-#include <boost/geometry/geometries/point_xy.hpp>
-#include <boost/numeric/interval.hpp>
 #include <variant>
 #include <algorithm>
 
-namespace fa::fcs {
+namespace pfa {
 
     template<class... Ts>
     struct match : Ts ... {
@@ -25,10 +22,32 @@ namespace fa::fcs {
 
     template<typename T>
     struct convex_polygon {
-        using point_t = ::boost::geometry::model::d2::point_xy<T>;
-        using value_t = T;
 
-        //inline static std::vector<point_t> out_intersections{};
+        struct point_t {
+            T _x;
+            T _y;
+
+            constexpr point_t() = default;
+            constexpr point_t(const T x, const T y) : _x{x}, _y{y} {}
+
+            [[nodiscard]] constexpr T x() const {
+                return _x;
+            }
+
+            [[nodiscard]] constexpr T y() const {
+                return _y;
+            }
+
+            [[nodiscard]] constexpr bool operator==(const point_t &p) const {
+                return _x == p._x && _y == p._y;
+            }
+
+            [[nodiscard]] constexpr bool operator!=(const point_t &p) const {
+                return !(*this == p);
+            }
+        };
+
+        using value_t = T;
 
         struct segment_t {
             T _m;
@@ -37,37 +56,25 @@ namespace fa::fcs {
             T _x0;
             T _x1;
 
-            std::optional<std::pair<T, T>> y_range = std::nullopt; // this segment is vertical or a single point
-
             constexpr segment_t() = default;
-
             constexpr segment_t(const T m, const T q,
                                 const T x0 = std::numeric_limits<T>::lowest(),
                                 const T x1 = std::numeric_limits<T>::max()) : _m{m}, _q{q}, _x0{x0}, _x1{x1} {
                 //assert(segment_t::eq(x0, x1, 25) || x0 < x1);
             }
 
-            constexpr static inline segment_t vertical(const T x, const T y0, const T y1) {
-                segment_t s;
-                s._m = {};
-                s._q = {};
-                s._x0 = x;
-                s._x1 = x;
-                s.y_range = std::make_pair(y0, y1);
-                return s;
-            }
-
             /*
-            static inline bool eq(T x, T y, uint32_t ulp = 1) {
+            static inline bool eq(T x, T y, uint32_t ulp = 0) {
                 static_assert(std::is_floating_point<T>::value, "T must be a floating point type");
                 using I = std::conditional_t<sizeof(T) <= 4, int32_t, int64_t>;
                 I xi = *(I *) &x;
-                if (xi < 0) xi = std::numeric_limits<I>::max() - xi;
+                if (xi < 0) xi = ~xi + 1;
 
                 I yi = *(I *) &y;
-                if (yi < 0) yi = std::numeric_limits<I>::max() - yi;
+                if (yi < 0) yi = ~yi + 1;
 
-                return std::make_unsigned_t<I>(std::abs(xi - yi)) <= ulp;
+                auto diff = std::abs(xi - yi);
+                return diff <= ulp;
             }
             */
 
@@ -85,22 +92,29 @@ namespace fa::fcs {
             }
             */
 
-            static inline bool eq(T x, T x_, T max_abs_diff = 1e-9, T max_rel_diff = 1e-13) {
+            static inline bool eq(T x, T x_, T max_abs_diff = 1e-12, T max_rel_diff = 1e-15) {
                 if constexpr (sizeof(T) > 8) {
-                    max_abs_diff = 1e-19;
-                    max_rel_diff = 1e-19;
+                    max_abs_diff = 1e-15;
+                    max_rel_diff = 1e-17;
                 }
+                if (x == x_) return true;
+                T abs_diff = std::fabs(x - x_);
+                T mx = std::max(std::fabs(x), std::fabs(x_));
+
+                /*
                 // Check if the numbers are really close -- needed
                 // when comparing numbers near zero.
-                auto diff = std::abs(x - x_);
+                auto diff = fabs(x - x_);
                 if (diff <= max_abs_diff) return true;
 
-                //x = std::abs(x);
-                //x_ = std::abs(x_);
-                auto largest = (x > x_) ? std::abs(x) : std::abs(x_);
+                x = fabs(x);
+                x_ = fabs(x_);
+                auto largest = (x > x_) ? x : x_;
 
                 if (diff <= largest * max_rel_diff) return true;
                 return false;
+                */
+                return abs_diff <= max_abs_diff || abs_diff <= mx * max_rel_diff;
             }
 
             static inline segment_t from_points(const point_t &p0, const point_t &p1) {
@@ -108,7 +122,7 @@ namespace fa::fcs {
                 /*
                 if (eq(p0.x(), p1.x())) {
                     return segment_t{0, std::, p0.x(), p1.x()};
-                    //return segment_t::vertical(p0.x(), std::min(p0.y(), p1.y()), std::max(p0.y(), p1.y()));
+                    //return segment_t::vertical(p0.x(), std::min(p0.y(), p1.y()), std::_MAX(p0.y(), p1.y()));
                 }
                 */
 
@@ -124,13 +138,11 @@ namespace fa::fcs {
             }
 
             inline point_t p0() const {
-                if (y_range.has_value()) return point_t{_x0, y_range.value().first};
-                else return point_t{_x0, _m * _x0 + _q};
+                return point_t{_x0, _m * _x0 + _q};
             }
 
             inline point_t p1() const {
-                if (y_range.has_value()) return point_t{_x1, y_range.value().second};
-                else return point_t{_x1, _m * _x1 + _q};
+                return point_t{_x1, _m * _x1 + _q};
             }
 
             inline bool intersects(const segment_t &s) const {
@@ -143,31 +155,7 @@ namespace fa::fcs {
 
                 //return y0 >= p0y && y1 <= p1y;
                 return (eq(y0, p0y) || y0 > p0y) && (eq(y1, p1y) || y1 < p1y);
-
-                //auto s0 = ::boost::geometry::model::segment<point_t>{point_t{_x0, y0}, point_t{_x1, y1}};
-                //auto s1 = ::boost::geometry::model::segment<point_t>{point_t{_x0, p0y}, point_t{_x1, p1y}};
-                //return ::boost::geometry::intersects(s0, s1);
-
             }
-
-            /*
-            static inline bool less(const segment_t&s0, const segment_t&s1) const {
-                // s0 is data[i] and s1 is seg._s
-                //assert(s0._x0 >= s1._x0 and s0._x1 <= s1._x1);
-
-                auto x0 = s0._x0;
-                auto x1 = s0._x1;
-
-                auto s0_left = s0._m * x0 + s0._q;
-                auto s0_right = s0._m * x1 + s0._q;
-
-                auto s1_left = s1._m * x0 + s1._q;
-                auto s1_right = s1._m * _x1 + s1._q;
-
-                //return s0_left < s1_left && s0_right < s1_right;
-                return (!eq(s0_left, s1_left) && s0_left < s1_left) && (!eq(s0_right, s1_right) && s0_right < s1_right);
-            }
-            */
 
             bool operator<(const segment_t &s) const {
                 auto sy0 = s._m * _x0 + s._q;
@@ -176,7 +164,6 @@ namespace fa::fcs {
                 auto py0 = _m * _x0 + _q;
                 auto py1 = _m * _x1 + _q;
 
-                //return sy0 > py0 && sy1 > py1;
                 return (sy0 > py0) & !eq(sy0, py0) && (sy1 > py1) & !eq(sy1, py1);
             }
 
@@ -241,32 +228,6 @@ namespace fa::fcs {
         }
 
         /*
-        inline size_t search_upper_intersection(auto *data, size_t len, const auto &seg) const {
-            auto i = 0;
-            while (i < (len - 1)) {
-                if (data[i] < seg._s) ++i;
-                else {
-                    //assert(data[i].intersects(seg._s));
-                    return i;
-                };
-            }
-            return len - 1;
-        }
-
-        inline size_t search_lower_intersection(auto *data, size_t len, const auto &seg) const {
-            auto i = len - 1;
-            while (i > 0) {
-                if (data[i] < seg._s) --i;
-                else {
-                    //assert(data[i].intersects(seg._s));
-                    return i;
-                };
-            }
-            return 0;
-        }
-        */
-
-        /*
         template<typename It, class S>
         It branchless_search(It first, It last, const S& x) const {
             int len = std::distance(first, last);
@@ -320,16 +281,6 @@ namespace fa::fcs {
                 return true;
             } else if (ul >= pl.y() && ur < pr.y()) {
                 auto t = cut(std::decay_t<decltype(u)>{narrow_u});
-
-                auto new_seg_u = std::get<2>(t);
-                auto new_seg_l = std::get<3>(t);
-
-                //assert(new_seg_u.p0().x() <= new_seg_l.p0().x());
-                //assert(new_seg_u.p1().x() <= new_seg_l.p1().x());
-
-                //assert(new_seg_u.p0().y() >= new_seg_l.p0().y());
-                //assert(new_seg_u.p1().y() >= new_seg_l.p1().y());
-
                 return t;
             } else {
                 return false;
@@ -353,16 +304,6 @@ namespace fa::fcs {
                 return true;
             } else if (ll > pl.y() && lr <= pr.y()) {
                 auto t = cut(std::decay_t<decltype(l)>{narrow_l});
-
-                auto new_seg_u = std::get<2>(t);
-                auto new_seg_l = std::get<3>(t);
-
-                //assert(new_seg_u.p0().x() <= new_seg_l.p0().x());
-                //assert(new_seg_u.p1().x() <= new_seg_l.p1().x());
-
-                //assert(new_seg_u.p0().y() >= new_seg_l.p0().y());
-                //assert(new_seg_u.p1().y() >= new_seg_l.p1().y());
-
                 return t;
             } else {
                 //assert(l.right().second.y() > d.second.y());
@@ -448,10 +389,10 @@ namespace fa::fcs {
         inline void clear() {
             upper.clear();
             lower.clear();
+            upper.reserve(1 << 18);
+            lower.reserve(1 << 18);
             lo_start = 0;
             up_start = 0;
-            //edges.clear();
-            //out_intersections.clear();
             init = std::nullopt;
         }
 

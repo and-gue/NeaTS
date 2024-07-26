@@ -50,7 +50,7 @@ xlabnr <- (2*(length(d)/2)-1)
 
 for( tc_id in names(d) ){        
 
-    plot( c(1e-9), c(1e-9), xlim=c(min(raw["query_len"]),max(raw["query_len"])),
+    plot( c(1e-9), c(1e-9), xlim=c(min(raw["query_len"]),_MAX(raw["query_len"])),
                     ylim=c(0.01,1000),
                     ylab="", xlab="", xaxt="n", log="y" )
     box(col="gray")

@@ -8,7 +8,7 @@ namespace neats {
 
     template<typename x_t = uint32_t, typename y_t = int64_t, int64_t max_error = 8, typename poly = double, typename T1 = float, typename T2 = double>
     class lossy_compressor {
-        using poa_t = fa::pfa::piecewise_optimal_approximation<x_t, y_t, poly, T1, T2>;
+        using poa_t = pfa::piecewise_optimal_approximation<x_t, y_t, poly, T1, T2>;
         using polygon_t = poa_t::convex_polygon_t;
         //using fun_t = poa_t::fun_t;
 
@@ -35,6 +35,10 @@ namespace neats {
 
     public:
 
+        inline auto num_partitions() const {
+            return starting_positions.size();
+        }
+
         // from begin to end the data is already "normalized" (i.e. > 0)
         template<typename It>
         inline void partitioning(It begin, It end) {
@@ -56,8 +60,8 @@ namespace neats {
                     auto im = imo;
 
                     if (frontier[im].second <= k) { // an edge overlaps the current point (i.e. k)
-                        auto t = fa::algorithm::make_segment<poa_t>(model, g, (begin + k), end,
-                                                                    frontier[im].second);
+                        auto t = pfa::algorithm::make_segment<poa_t>(model, g, (begin + k), end,
+                                                                     frontier[im].second);
                         frontier[im].first = std::get<0>(t);
                         frontier[im].second = std::get<1>(t);
                         //assert(frontier[im].first < frontier[im].second - 1);

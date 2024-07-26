@@ -46,11 +46,22 @@ Please report, if a test fails. Thanks.
   * Tests can be customized by editing the `.config` files.
     Test files should be located in [test_cases](./test_cases).
 
+## Adding a test
+
+The CMake script produces a test target for each file which ends
+with the suffix `_test.cpp`. The test target name will be produced
+from the filename as follows:
+  
+  * strip the `.cpp` suffix
+  * replace all underscores (`_`) by a hyphen (`-`) 
+  
+E.g. let `your_structure_test.cpp` be your new test. Then the test
+target will be `your-structure-test`.
+
 
 ## Acknowledgements
   We thank
-  * Project Gutenberg for providing text files `faust.txt` and
-    `zarathustra.txt`.
+  * Project Gutenberg for providing text files `faust.txt`.
   * Shane Culpepper for providing the test inputs
     `keeper.int` and `moby.int` for the integer-alphabet CSAs and CSTs.
 

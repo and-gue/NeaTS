@@ -26,23 +26,6 @@ OLD_DIR="$( cd "$( dirname "$0" )" && pwd )" # gets the directory where the scri
 cd "${OLD_DIR}"
 OLD_DIR=`pwd`
 
-# (1) Copy pre-commit hook
-
-
-if [ -d ".git/hooks" ]; then
-	echo "Copy pre-commit into .git/hooks"
-	cp extras/pre-commit .git/hooks/
-	if [ $? != 0 ]; then
-		echo "WARNING: could not copy pre-commit script into .git/hooks"
-	fi
-	chmod u+x .git/hooks/pre-commit
-	if [ $? != 0 ]; then
-		echo "WARNING: could not make pre-commit script executable"
-	fi
-else
-	echo "WARNING: .git/hooks directory does not exists."
-	echo "         The pre-commit hook is not installed."
-fi
 
 cd build # change into the build directory
 if [ $? != 0 ]; then
@@ -53,12 +36,12 @@ if [ $? != 0 ]; then
 	exit 1
 fi
 
-cmake -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_INSTALL_PREFIX="${SDSL_INSTALL_PREFIX}" .. # run cmake 
+cmake -DCMAKE_INSTALL_PREFIX="${SDSL_INSTALL_PREFIX}" .. # run cmake 
 if [ $? != 0 ]; then
 	echo "ERROR: CMake build failed."
 	exit 1
 fi
-make sdsl # run make
+make -j sdsl # run make
 if [ $? != 0 ]; then
 	echo "ERROR: Build failed."
 	exit 1
@@ -74,7 +57,8 @@ rm -f "${SDSL_INSTALL_PREFIX}/lib/libsdsl*"
 if [ $? != 0 ]; then
 	echo "WARNING: Could not remove old library file."
 fi
-make install # install library
+echo "Installing sdsl to ${SDSL_INSTALL_PREFIX}"
+make install | grep -E -v ".hpp|pc" # install library
 if [ $? != 0 ]; then
 	echo "ERROR: Installation failed."
 	exit 1
@@ -87,15 +71,34 @@ if [ "`pwd`" != "${OLD_DIR}" ]; then
 	exit 1
 fi
 
+# (1) Copy pre-commit hook (only after cmake found clang-format)
+if [ -d ".git/hooks" ]; then
+	echo "Copy pre-commit into .git/hooks"
+	cp extras/pre-commit .git/hooks/
+	if [ $? != 0 ]; then
+		echo "WARNING: could not copy pre-commit script into .git/hooks"
+	fi
+	chmod u+x .git/hooks/pre-commit
+	if [ $? != 0 ]; then
+		echo "WARNING: could not make pre-commit script executable"
+	fi
+else
+	echo "WARNING: .git/hooks directory does not exists."
+	echo "         The pre-commit hook is not installed."
+fi
+
+STDFLAGS=$(grep "MY_CXX_FLAGS=" Make.helper | cut -d'=' -f2-)
+ALLFLAGS=$(grep "MY_CXX_OPT_FLAGS=" Make.helper | cut -d'=' -f2-)
+
 echo "SUCCESS: sdsl was installed successfully!"
 echo "The sdsl include files are located in '${SDSL_INSTALL_PREFIX}/include'."
 echo "The library files are located in '${SDSL_INSTALL_PREFIX}/lib'."
 echo " "
 echo "Sample programs can be found in the examples-directory."
 echo "A program 'example.cpp' can be compiled with the command: "
-echo "g++ -std=c++11 -DNDEBUG -O3 [-msse4.2] \\"
+echo "g++ ${STDFLAGS} ${ALLFLAGS} \\"
 echo "   -I${SDSL_INSTALL_PREFIX}/include -L${SDSL_INSTALL_PREFIX}/lib \\"
-echo "   example.cpp -lsdsl -ldivsufsort -ldivsufsort64"
+echo "   example.cpp -ldivsufsort -ldivsufsort64"
 echo " "
 echo "Tests in the test-directory"
 echo "A cheat sheet in the extras/cheatsheet-directory."

@@ -1,12 +1,15 @@
-#include <sdsl/wavelet_trees.hpp>
 #include <iostream>
 #include <utility>
+
+#include <sdsl/construct.hpp>
+#include <sdsl/rrr_vector.hpp>
+#include <sdsl/wt_int.hpp>
 
 using namespace std;
 using namespace sdsl;
 
-template<class value_type, class size_type>
-ostream& operator<<(ostream& os, const std::pair<value_type, size_type>& p)
+template <class value_type, class size_type>
+ostream & operator<<(ostream & os, std::pair<value_type, size_type> const & p)
 {
     return os << "(" << p.first << "," << p.second << ")";
 }

@@ -1,5 +1,7 @@
-#include <sdsl/suffix_trees.hpp>
 #include <iostream>
+
+#include <sdsl/cst_sct3.hpp>
+#include <sdsl/lcp_support_sada.hpp>
 
 using namespace sdsl;
 using namespace std;

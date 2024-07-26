@@ -41,6 +41,7 @@ auto random_access_time(const auto &compressor, uint32_t num_runs = 10) {
     return dt / num_runs;
 };
 
+
 template<typename T>
 auto full_decompression_time(const auto &compressor, uint32_t num_runs = 1) {
     size_t res = 0;
@@ -124,7 +125,7 @@ void run(const auto &fn, bool header = false) {
     for (auto r = 0; r < num_runs; ++r) {
         std::vector<int64_t> decompressed_SIMD(data.size());
         lc.decompress_SIMD(decompressed_SIMD.data());
-        do_not_optimize(decompressed);
+        do_not_optimize(decompressed_SIMD);
     }
     auto t2 = std::chrono::high_resolution_clock::now();
     auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count() / num_runs;
@@ -176,7 +177,7 @@ void inline run_bpcs(const auto &fn) {
     run<20, poly, T1, T2>(fn);
 }
 
-/* Given a directory path returns a vector of all the files in the directory */
+/* Given a directory f returns a vector of all the files in the directory */
 std::vector<std::string> get_files(const std::string &path) {
     std::vector<std::string> files;
     for (const auto &entry: std::filesystem::directory_iterator(path)) {
@@ -201,14 +202,13 @@ void run_all(const auto &path) {
     //std::cout << "DONE" << std::endl;
 }
 
-void dac_compression_full(auto path, std::ostream &out) {
+void dac_compression_full(std::ostream &out) {
     using T = int64_t;
-    out
-            << "filename,compressor,#values,uncompressed_bit_size,compressed_bit_size,compression_ratio,decompression_time_ns,compression_time_ns,random_access_time_ns"
-            << std::endl;
-    auto fns = get_files(path);
+    out << "filename,compressor,#values,uncompressed_bit_size,compressed_bit_size,compression_ratio,decompression_time_ns,compression_time_ns,random_access_time_ns" << std::endl;
+    //auto fns = get_files(path);
+    auto fns = std::vector<std::string>{"/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.bin_int64"};
     for (auto filename: fns) {
-        const auto data = fa::utils::read_data_binary<T, T>(filename);
+        const auto data = fa::utils::read_data_binary<T, T>(filename, false);
         auto min_element = *std::min_element(data.begin(), data.end());
 
         std::vector<uint64_t> u_data(data.size());
@@ -502,8 +502,9 @@ void streaming_compressors_full(const std::string &fn, size_t block_size = 1000)
         << std::endl;
 
     auto path_double_datasets = "";
-    const auto fn_fulls = get_files(path_double_datasets);
-    for (const auto &fn_full: fn_fulls) {
+    //const auto fn_fulls = get_files(path_double_datasets);
+    const auto fn_full = fn;
+    //for (const auto &fn_full: fn_fulls) {
         out << fn_full << ",chimp," + std::to_string(block_size) + ",";
         chimp_compression(fn_full, out);
         out << fn_full << ",chimp128," + std::to_string(block_size) + ",";
@@ -512,7 +513,7 @@ void streaming_compressors_full(const std::string &fn, size_t block_size = 1000)
         tsxor_compression(fn_full, out);
         out << fn_full << ",gorilla," + std::to_string(block_size) + ",";
         gorilla_compression<double>(fn_full, out);
-    }
+    //}
 
     out.close();
 }
@@ -561,10 +562,11 @@ void neats_compression_full() {
     run<22, double, float, double>(path + std::string("bird-migration.bin"));
     run<24, double, float, double>(path + std::string("bitcoin-price.bin"));
     run<37, long double, double, double>(path + std::string("basel-temp.bin"));
-    run<30, long double, double, double>(path + std::string("basel-wind.bin"));
+    run<37, long double, double, double>(path + std::string("basel-wind.bin"));
 }
 
 int main(int argc, char *argv[]) {
+    dac_compression_full(std::cout);
     /*
     if (argc != 2) {
         std::cerr << "Usage: " << argv[0] << " <filename>" << std::endl;
@@ -573,9 +575,81 @@ int main(int argc, char *argv[]) {
 
     const std::filesystem::path full_filename(argv[1]);
     */
-    lossy_compression_full();
-    neats_compression_full();
 
+    //auto block_size = 1000;
+    //const auto fn_full = "/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.double_bin";
+    /*
+    std::cout << fn_full << ",chimp,";
+    streaming_compressors_random_access<CompressorChimp<double>, DecompressorChimp<double>>(
+            fn_full, std::cout, block_size);
+    std::cout << fn_full << ",chimp128,";
+    streaming_compressors_random_access<CompressorChimp128<double>, DecompressorChimp128<double>>(
+            fn_full, std::cout, block_size);
+    std::cout << fn_full << ",gorilla,";
+    streaming_compressors_random_access<CompressorGorilla<double>, DecompressorGorilla<double>>(
+            fn_full, std::cout, block_size);
+    std::cout << fn_full << ",tsxor,";
+    streaming_compressors_random_access<CompressorTSXor<double>, DecompressorTSXor<double>>(
+            fn_full, std::cout, block_size);
+    */
+    //squash_full("brotli", "/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.bin_int64", std::cout, 1000, -1, false);
+    //std::cout << ',';
+    //squash_random_access("brotli", "/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.bin_int64", std::cout, 1000, -1, false);
+    //std::cout << ',';
+    //std::cout << "XZ" << std::endl;
+    //squash_random_access("xz", "/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.bin_int64", std::cout, 1000, -1, false);
+    //std::cout << std::endl;//for (const auto &fn_full: fn_fulls) {
+
+    //std::cout << fn_full << ",chimp," + std::to_string(block_size) + ",";
+    //chimp_compression(fn_full, std::cout);
+    /*
+    std::cout << fn_full << ",chimp128," + std::to_string(block_size) + ",";
+    chimp128_compression(fn_full, std::cout);
+    std::cout << fn_full << ",tsxor," + std::to_string(block_size) + ",";
+    tsxor_compression(fn_full, std::cout);
+    std::cout << fn_full << ",gorilla," + std::to_string(block_size) + ",";
+    gorilla_compression<double>(fn_full, std::cout);
+    */
+    //streaming_compressors_full("/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.double_bin", 1000);
+    //squash_full("zstd", "/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.bin_int64", std::cout, 1000, -1, false);
+    //squash_full("xz", "/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.bin_int64", std::cout, 1000, -1, false);
+    //squash_full("brotli", "/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.bin_int64", std::cout, 1000, -1, false);
+    /*
+    squash_full("lz4", "/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.bin_int64", std::cout, 1000, -1, false);
+    std::cout << ',';
+    squash_random_access("lz4", "/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.bin_int64", std::cout, 1000, -1, false);
+    std::cout << std::endl;
+
+    squash_full("snappy", "/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.bin_int64", std::cout, 1000, -1, false);
+    std::cout << ',';
+    squash_random_access("snappy", "/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.bin_int64", std::cout, 1000, -1, false);
+    std::cout << std::endl;
+
+    squash_full("brotli", "/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.bin_int64", std::cout, 1000, -1, false);
+    std::cout << ',';
+    squash_random_access("brotli", "/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.bin_int64", std::cout, 1000, -1, false);
+    std::cout << std::endl;
+
+    squash_full("xz", "/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.bin_int64", std::cout, 1000, -1, false);
+    std::cout << ',';
+    squash_random_access("xz", "/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.bin_int64", std::cout, 1000, -1, false);
+    std::cout << std::endl;
+
+    squash_full("zstd", "/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.bin_int64", std::cout, 1000, -1, false);
+    std::cout << ',';
+    squash_random_access("zstd", "/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.bin_int64", std::cout, 1000, -1, false);
+    std::cout << std::endl;
+    */
+
+
+    /* Priorità:
+     * LeaTS vs NeaTS (tabella sulle medie)
+     * Decomprimere con due passate (una per le approssimazioni ed una per i residui), poi
+     *      Decompression SIMD -> estendere a tutti i modelli
+     * Aggiungere ALP nella tabella grande e figure,
+     * Aggiorna risultati di NeaTS con c++23
+     *
+     */
 
 
     return 0;

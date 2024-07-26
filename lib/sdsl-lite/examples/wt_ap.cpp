@@ -1,11 +1,13 @@
-#include <sdsl/wavelet_trees.hpp>
+#include <sdsl/construct.hpp>
+#include <sdsl/wt_ap.hpp>
 
 using namespace sdsl;
 using namespace std;
 
-int main(int argc, char* argv[])
+int main(int argc, char * argv[])
 {
-    if (argc < 2) {
+    if (argc < 2)
+    {
         return 1;
     }
     wt_ap<> wt;
@@ -19,6 +21,6 @@ int main(int argc, char* argv[])
     }
     {
         std::ofstream out("wt-space.html");
-        write_structure<HTML_FORMAT>(wt,out);
+        write_structure<HTML_FORMAT>(wt, out);
     }
 }

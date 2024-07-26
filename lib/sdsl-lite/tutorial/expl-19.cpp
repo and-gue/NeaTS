@@ -1,6 +1,8 @@
-#include <sdsl/suffix_arrays.hpp>
-#include <iostream>
 #include <algorithm>
+#include <iostream>
+
+#include <sdsl/csa_wt.hpp>
+#include <sdsl/wt_int.hpp>
 
 using namespace std;
 using namespace sdsl;

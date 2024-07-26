@@ -18,7 +18,7 @@ const auto to_bytes = [](auto &&x) -> std::array<uint8_t, sizeof(T)> {
 
 
 void squash_random_access(const std::string &compressor, const std::string &filename,
-                          std::ostream &out, size_t block_size = 1000, int level = -1) {
+                          std::ostream &out, size_t block_size = 1000, int level = -1, bool first_is_size=true) {
 
     using T = int64_t;
 
@@ -41,7 +41,7 @@ void squash_random_access(const std::string &compressor, const std::string &file
         }
     }
 
-    const auto data = fa::utils::read_data_binary<T, T>(filename);
+    const auto data = fa::utils::read_data_binary<T, T>(filename, first_is_size);
     const size_t n = data.size(); // number of values
     const auto num_blocks = n / block_size;
 
@@ -133,7 +133,8 @@ void squash_full(const std::string &compressor,
                  const std::string &filename,
                  std::ostream &out,
                  size_t block_size = 1000,
-                 int level = -1) {
+                 int level = -1,
+                 bool first_is_size = true) {
 
     using T = int64_t;
 
@@ -156,7 +157,7 @@ void squash_full(const std::string &compressor,
         }
     }
 
-    auto data = fa::utils::read_data_binary<T, T>(filename);
+    auto data = fa::utils::read_data_binary<T, T>(filename, first_is_size);
     const size_t n = data.size(); // number of values
     const auto num_blocks = n / block_size;
 

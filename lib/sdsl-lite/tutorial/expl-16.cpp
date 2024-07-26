@@ -1,5 +1,8 @@
-#include <sdsl/wavelet_trees.hpp>
 #include <iostream>
+
+#include <sdsl/construct.hpp>
+#include <sdsl/rrr_vector.hpp>
+#include <sdsl/wavelet_trees.hpp>
 
 using namespace std;
 using namespace sdsl;
@@ -12,6 +15,5 @@ int main()
     cout << wt << endl;
     size_t idx = 5;
     auto r_c = wt.inverse_select(idx);
-    cout << get<0>(r_c)+1 << " occurrence(s) of "
-         << get<1>(r_c) << " in [0.." << idx << "]" << endl;
+    cout << get<0>(r_c) + 1 << " occurrence(s) of " << get<1>(r_c) << " in [0.." << idx << "]" << endl;
 }
