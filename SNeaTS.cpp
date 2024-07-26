@@ -216,8 +216,6 @@ int main(int argc, char *argv[]) {
     auto t1 = std::chrono::high_resolution_clock::now();
     simd_preprocess(data_vec.data(), data_vec.size(), simd_min(data_vec.data(), data_vec.size()) - epsilon);
     auto t2 = std::chrono::high_resolution_clock::now();
-    //auto preprocess_time = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
-    //std::cout << "Preprocess speed: " << ((data_vec.size() * sizeof(type_in)) / 1e6) / ((preprocess_time) / 1e9) << std::endl;
     std::cout << "compressor,dataset,compressed_bit_size,compression ratio,compression_speed(MB/s),training_size,M" << std::endl;
     t1 = std::chrono::high_resolution_clock::now();
     auto [icmpr, ccmpr] = pfa::sneats::partitioning<uint32_t, type_in, double, double, double>(data_vec.begin(), data_vec.end(), bpc, tsize);
@@ -249,73 +247,6 @@ int main(int argc, char *argv[]) {
             exit(-1);
         }
     }
-
-    /*
-    auto start = data_vec.begin();
-    auto end = data_vec.begin() + (131072 * 8);
-
-    pfa::sneats::compressor<uint32_t, type_in, double, float, double> compressor{(uint8_t) bpc};
-    t1 = std::chrono::high_resolution_clock::now();
-    compressor.initial_partitioning(start, end);
-    t2 = std::chrono::high_resolution_clock::now();
-    auto compression_time = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
-    auto uncompressed_size = std::distance(start, end) * sizeof(type_in) * 8;
-    auto compression_speed = (double) ((uncompressed_size / 8) / 1e6) / (compression_time / 1e9);
-
-    start = end;
-    end = data_vec.end();
-    uncompressed_size += std::distance(start, end) * sizeof(type_in) * 8;
-
-    pfa::sneats::compressor<uint32_t, type_in, double, float, double> t_compressor{(uint8_t) bpc};
-    t1 = std::chrono::high_resolution_clock::now();
-    t_compressor.custom_partitioning(start, end, compressor.best_models<5>());
-    t2 = std::chrono::high_resolution_clock::now();
-    auto custom_partitioning_time = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
-    auto compressed_size = t_compressor.size_in_bits() + compressor.size_in_bits();
-    auto compression_ratio = (double) compressed_size / (double) uncompressed_size;
-    auto custom_partitioning_speed =  (double) ((uncompressed_size / 8) / 1e6) / (custom_partitioning_time / 1e9);
-
-    std::cout << "compressor,dataset,compressed_bit_size,compression ratio,compression_speed(MB/s),compression_speed_t" << std::endl;
-    std::cout << "NeaTS," << full_fn << "," << compressed_size << "," << compression_ratio << "," << compression_speed << "," << custom_partitioning_speed << std::endl;
-
-    std::vector<int64_t, AlignedAllocator<int64_t>> decompressed(t_compressor.size());
-    t_compressor.simd_decompress(decompressed.data());
-
-    auto num_errors = 0;
-    int64_t max_error = 0;
-    for (auto i = 0; i < std::distance(start, end); ++i) {
-        if (data_vec[i + (131072 / 2)] != decompressed[i]) {
-            num_errors++;
-            max_error = std::max(max_error, std::abs(data_vec[i] - decompressed[i]));
-        }
-    }
-    std::cout << "Number of errors: " << num_errors << ", _MAX error: " << max_error << std::endl;
-
-    auto _models = compressor.best_models<10>();
-    */
-
-    //data_ptr =  simd_for(std::move(data_ptr), data.size(), print);
-
-
-    // entro martedì
-    // 1. test su healthcare data [DONE]
-    // 2. sim-piece in tabella lossy
-    // 3. radar plot
-    //
-
-    // Decompression speed (LeaTS) [DONE] vs ALP [DONE]
-    // Decompression speed (NeaTS) [DONE]
-    // Make residuals simd NeaTS [DONE]
-    // Take only one geolife dataset
-    // Add one healtcare dataset [DONE] (plot al posto di dew-point-temp (ECG-I))
-    // radar plot (cr, decompression speed, compression speed, random access speed) [LeaTS, NeaTS (e tutti gli altri)]
-    // NeaTS sampling
-    // NeaTS e LeaTS sampling nel plot compression speed vs compression ratio
-    // Sim-piece nella tabella lossy
-
-    // LeaTS vs NeaTS
-    // sampling vs compression ratio
-    // commento real-time analysis da revisore 3 => non siamo "real-time"
 
     return 0;
 }

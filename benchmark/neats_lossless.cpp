@@ -642,15 +642,5 @@ int main(int argc, char *argv[]) {
     */
 
 
-    /* Priorità:
-     * LeaTS vs NeaTS (tabella sulle medie)
-     * Decomprimere con due passate (una per le approssimazioni ed una per i residui), poi
-     *      Decompression SIMD -> estendere a tutti i modelli
-     * Aggiungere ALP nella tabella grande e figure,
-     * Aggiorna risultati di NeaTS con c++23
-     *
-     */
-
-
     return 0;
 }
