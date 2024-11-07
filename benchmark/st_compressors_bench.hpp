@@ -10,13 +10,13 @@
 #include "TSXor/DecompressorTSXor.hpp"
 #include "Gorilla/CompressorGorilla.hpp"
 #include "Gorilla/DecompressorGorilla.hpp"
-#include "utils.hpp"
+#include "../include/algorithms.hpp"
 #include <chrono>
 
 
 template<typename T = double>
 void gorilla_compression(const std::string &in_filename, std::ostream &out, size_t block_size = 1000) {
-    const auto data = fa::utils::read_data_binary<T, T>(in_filename, !std::is_floating_point_v<T>);
+    const auto data = pfa::algorithm::io::read_data_binary<T, T>(in_filename, !std::is_floating_point_v<T>);
     const auto n = data.size();
 
     const auto num_blocks = (n / block_size) + (n % block_size != 0);
@@ -60,7 +60,7 @@ void gorilla_compression(const std::string &in_filename, std::ostream &out, size
 }
 
 void tsxor_compression(const std::string &filename, std::ostream &out, size_t block_size = 1000) {
-    const auto data = fa::utils::read_data_binary<double, double>(filename, false);
+    const auto data = pfa::algorithm::io::read_data_binary<double, double>(filename, false);
 
     const auto n = data.size();
 
@@ -107,7 +107,7 @@ void tsxor_compression(const std::string &filename, std::ostream &out, size_t bl
 }
 
 void chimp_compression(const std::string &filename, std::ostream &out, size_t block_size = 1000) {
-    const auto data = fa::utils::read_data_binary<double, double>(filename, false);
+    const auto data = pfa::algorithm::io::read_data_binary<double, double>(filename, false);
 
     const auto n = data.size();
 
@@ -156,7 +156,7 @@ void chimp_compression(const std::string &filename, std::ostream &out, size_t bl
 
 void chimp128_compression(const std::string &filename, std::ostream &out, size_t block_size = 1000) {
 
-    const auto data = fa::utils::read_data_binary<double, double>(filename, false);
+    const auto data =  pfa::algorithm::io::read_data_binary<double, double>(filename, false);
     const auto n = data.size();
     const auto num_blocks = (n / block_size) + (n % block_size != 0);
 
@@ -216,7 +216,7 @@ template<typename T = CompressorChimp<double>, typename U = DecompressorChimp<do
 void streaming_compressors_random_access(const std::string &in_fn,
                                          std::ostream &out, size_t block_size = 1000) {
 
-    const auto data = fa::utils::read_data_binary<double, double>(in_fn, false);
+    const auto data =  pfa::algorithm::io::read_data_binary<double, double>(in_fn, false);
     const auto n = data.size(); // number of values
     const auto num_blocks = (n / block_size) + (n % block_size != 0);
 

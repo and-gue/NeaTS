@@ -1,13 +1,12 @@
 #include <iostream>
-#include "NeaTS.hpp"
-#include "utils.hpp"
+#include "../include/NeaTS.hpp"
 #include <filesystem>
 #include <chrono>
 #include <sdsl/bit_vectors.hpp>
 #include <sdsl/dac_vector.hpp>
 #include "gp_compressors_bench.hpp"
-#include "NeaTSL.hpp"
-#include "algorithms.hpp"
+#include "../include/NeaTSL.hpp"
+#include "../include/algorithms.hpp"
 #include "AdaptiveApproximation.hpp"
 #include <climits>
 #include "st_compressors_bench.hpp"
@@ -41,6 +40,46 @@ auto random_access_time(const auto &compressor, uint32_t num_runs = 10) {
     return dt / num_runs;
 };
 
+double dac_scan_speed(const auto &compressor, uint32_t range) {
+    auto seed_val = 1234;
+    std::mt19937 mt1(seed_val);
+    size_t dt = 0;
+    size_t num_queries = 10000;
+    // select query
+    std::uniform_int_distribution<size_t> dist1(0, compressor.size() - range);
+    std::vector<size_t> indexes(num_queries);
+    for (auto i = 0; i < num_queries; ++i) {
+        indexes[i] = (dist1(mt1));
+    }
+
+    //auto cnt = 0;
+    auto t1 = std::chrono::high_resolution_clock::now();
+    for (auto i : indexes) {
+        std::vector<uint64_t> out(range);
+        std::copy(compressor.begin() + i, compressor.begin() + i + range, out.begin());
+        //cnt += compressor[i];
+        do_not_optimize(out);
+
+        /*
+        // check if the scan is correct
+        for (auto j = 0; j < range; ++j) {
+            if (compressor[i + j] != out[j]) {
+                std::cout << "Error in DAC scan" << std::endl;
+                exit(1);
+            }
+        }
+         */
+    }
+    auto t2 = std::chrono::high_resolution_clock::now();
+
+    auto time = duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
+    //dt = time / num_queries;
+    //std::cout << "Time: " << dt << std::endl;
+    auto speed = (((range * 8) * num_queries) / 1e6) / ((double) time / 1e9);
+    //auto speed = (((range * 8) * num_queries) / 1e6) / ((double) time / 1e9);
+    return speed;
+};
+
 
 template<typename T>
 auto full_decompression_time(const auto &compressor, uint32_t num_runs = 1) {
@@ -57,6 +96,7 @@ auto full_decompression_time(const auto &compressor, uint32_t num_runs = 1) {
     return res / num_runs;
 };
 
+/*
 template<auto bpc, typename poly, typename T1, typename T2>
 void run(const auto &fn, bool header = false) {
     constexpr int64_t epsilon = BPC_TO_EPSILON(bpc);
@@ -176,6 +216,7 @@ void inline run_bpcs(const auto &fn) {
     run<19, poly, T1, T2>(fn);
     run<20, poly, T1, T2>(fn);
 }
+*/
 
 /* Given a directory f returns a vector of all the files in the directory */
 std::vector<std::string> get_files(const std::string &path) {
@@ -202,54 +243,63 @@ void run_all(const auto &path) {
     //std::cout << "DONE" << std::endl;
 }
 
-void dac_compression_full(std::ostream &out) {
+void dac_compression_full(const std::string& filename, std::ostream &out) {
     using T = int64_t;
     out << "filename,compressor,#values,uncompressed_bit_size,compressed_bit_size,compression_ratio,decompression_time_ns,compression_time_ns,random_access_time_ns" << std::endl;
     //auto fns = get_files(path);
-    auto fns = std::vector<std::string>{"/data/citypost/neat_datasets/a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0/I.bin_int64"};
-    for (auto filename: fns) {
-        const auto data = fa::utils::read_data_binary<T, T>(filename, false);
-        auto min_element = *std::min_element(data.begin(), data.end());
+    //for (auto filename: fns) {
+    const auto data = pfa::algorithm::io::read_data_binary<T, T>(filename, false);
+    //auto min_element = *std::min_element(data.begin(), data.end());
+    auto min_data = *std::min_element(data.begin(), data.end());
+    min_data = min_data < 0 ? (min_data - 1) : -1;
 
-        std::vector<uint64_t> u_data(data.size());
-        std::transform(data.begin(), data.end(), u_data.begin(),
-                       [&](const auto &x) { return static_cast<uint64_t>(x + -min_element); });
+    std::vector<uint64_t> u_data(data.size());
+    std::transform(data.begin(), data.end(), u_data.begin(),
+                   [&](const auto &x) { return static_cast<uint64_t>(x - min_data); });
 
-        auto t1 = std::chrono::high_resolution_clock::now();
-        const auto dac_vector = sdsl::dac_vector_dp(u_data);
-        auto t2 = std::chrono::high_resolution_clock::now();
-        do_not_optimize(dac_vector);
-        auto compression_time = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
-        t1 = std::chrono::high_resolution_clock::now();
-        std::vector<uint64_t> u_decompressed(data.size());
-        for (auto i = 0; i < data.size(); ++i) {
-            u_decompressed[i] = dac_vector[i];
-        }
-        t2 = std::chrono::high_resolution_clock::now();
-        do_not_optimize(u_decompressed);
-        auto decompression_time = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
-        auto compressed_bit_size = sdsl::size_in_bytes(dac_vector) * 8;
-
-        out << filename << "," << "DAC" << "," << data.size() << "," << data.size() * sizeof(T) * 8 << ","
-            << compressed_bit_size << ","
-            << (long double) (compressed_bit_size) / (long double) (data.size() * sizeof(T) * 8) << ","
-            << decompression_time << "," << compression_time << ",";
-
-        for (auto j = 0; j < data.size(); ++j) {
-            if (u_data[j] != u_decompressed[j]) {
-                std::cerr << "Error during decompression" << std::endl;
-                exit(1);
-            }
-        }
-
-        out << random_access_time(dac_vector) << std::endl;
+    auto t1 = std::chrono::high_resolution_clock::now();
+    const auto dac_vector = sdsl::dac_vector_dp(u_data);
+    auto t2 = std::chrono::high_resolution_clock::now();
+    do_not_optimize(dac_vector);
+    auto compression_time = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
+    t1 = std::chrono::high_resolution_clock::now();
+    std::vector<uint64_t> u_decompressed(data.size());
+    for (auto i = 0; i < data.size(); ++i) {
+        u_decompressed[i] = dac_vector[i];
     }
+    t2 = std::chrono::high_resolution_clock::now();
+    do_not_optimize(u_decompressed);
+    auto decompression_time = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
+    auto compressed_bit_size = sdsl::size_in_bytes(dac_vector) * 8;
+
+    out << filename << "," << "DAC" << "," << data.size() << "," << data.size() * sizeof(T) * 8 << ","
+        << compressed_bit_size << ","
+        << (long double) (compressed_bit_size) / (long double) (data.size() * sizeof(T) * 8) << ","
+        << decompression_time << "," << compression_time << ",";
+
+    for (auto j = 0; j < data.size(); ++j) {
+        if (u_data[j] != u_decompressed[j]) {
+            std::cerr << "Error during decompression" << std::endl;
+            exit(1);
+        }
+    }
+
+    out << random_access_time(dac_vector) << ",";
+
+    for (auto i = 10; i <= 1000000; i *= 2) {
+        auto ssp = dac_scan_speed(dac_vector, i);
+        std::cout << ssp << ",";
+    }
+
+    //double scan_speed = dac_scan_speed(dac_vector, 20);
+    //std::cout << "DAC scan speed: " << scan_speed << std::endl;
 }
 
+/*
 template<int64_t error_bound, typename T0, typename T1, typename T2>
 void lossy_compression(const auto &fn, std::ostream &out) {
     neats::lossy_compressor<x_t, y_t, error_bound, T0, T1, T2> lc;
-    auto data = fa::utils::read_data_binary<y_t, y_t>(fn);
+    auto data = pfa::utils::read_data_binary<y_t, y_t>(fn);
     auto range = *std::max_element(data.begin(), data.end()) - *std::min_element(data.begin(), data.end());
     auto min_data = *std::min_element(data.begin(), data.end());
     min_data = min_data < 0 ? (min_data - 1) : -1;
@@ -314,7 +364,9 @@ void adaptive_approximation_full(const auto &fn, std::ostream &out) {
     out << "AA," << fn << "," << error_bound << "," << uncompressed_bit_size << "," << data.size() << ","
         << compressed_bit_size << "," << cr << "," << range << std::endl;
 }
+*/
 
+/*
 void lossy_compression_full() {
     std::string path = "../data/its/";
     //auto fn = path + std::string(argv[1]);
@@ -334,7 +386,6 @@ void lossy_compression_full() {
     pla_compression<68, double, float, double>(path + std::string("dew-point-temp.bin"), std::cout);
     adaptive_approximation_full<68, double, float, double>(path + std::string("dew-point-temp.bin"), std::cout);
 
-    /*
     lossy_compression<27, double, float, double>(path + std::string("germany.bin"), std::cout);
     pla_compression<27, double, float, double>(path + std::string("germany.bin"), std::cout);
     adaptive_approximation_full<27, double, float, double>(path + std::string("germany.bin"), std::cout);
@@ -367,7 +418,6 @@ void lossy_compression_full() {
     pla_compression<50, long double, double, double>(path + std::string("geolife-lon.bin"), std::cout);
     adaptive_approximation_full<50, long double, double, double>(path + std::string("geolife-lon.bin"), std::cout);
 
-    */
     lossy_compression<238820000, long double, double, double>(path + std::string("basel-temp.bin"), std::cout);
     pla_compression<238820000, long double, double, double>(path + std::string("basel-temp.bin"), std::cout);
     adaptive_approximation_full<238820000, long double, double, double>(path + std::string("basel-temp.bin"),
@@ -385,6 +435,7 @@ void lossy_compression_full() {
     pla_compression<900, double, float, double>(path + std::string("bird-migration.bin"), std::cout);
     adaptive_approximation_full<900, double, float, double>(path + std::string("bird-migration.bin"), std::cout);
 }
+*/
 
 void squash_block_compression(const auto &compressor, int level = -1) {
     std::string path = "../data/its/";
@@ -402,11 +453,11 @@ void squash_block_compression(const auto &compressor, int level = -1) {
     }
 }
 
-// run NeaTS for other datasets
+/*
 template<typename TypeIn, typename TypeOut = y_t, int64_t bpc, typename poly = double, typename T1 = float, typename T2 = double>
 void test_run(const std::string &full_fn, bool header = false) {
     static_assert(std::is_unsigned_v<TypeIn> && std::is_signed_v<TypeOut>);
-    fa::utils::check_data<bpc, TypeIn, TypeOut>(full_fn);
+    pfa::utils::check_data<bpc, TypeIn, TypeOut>(full_fn);
     constexpr int64_t epsilon = BPC_TO_EPSILON(bpc);
     neats::lossless_compressor<x_t, y_t, bpc, poly, T1, T2> lc;
     auto processed_data = fa::utils::preprocess_data<bpc, TypeIn, TypeOut>(full_fn);
@@ -484,17 +535,8 @@ void test_run(const std::string &full_fn, bool header = false) {
         }
     }
 
-    /*
-    for (auto i = 0; i < data.size(); ++i) {
-        if (processed_data[i] != decompressed_SIMD[i]) {
-            std::cout << "SIMD decompression error at index: ";
-            std::cout << i << ": " << processed_data[i] << "!=" << decompressed_SIMD[i] << std::endl;
-            exit(1);
-        }
-    }
-    */
-
 }
+*/
 
 void streaming_compressors_full(const std::string &fn, size_t block_size = 1000) {
     std::ofstream out(fn);
@@ -541,13 +583,14 @@ void streaming_compressors_random_access(const std::string &fn_out, size_t block
     }
 }
 
+/*
 void neats_compression_full() {
     std::string path = "../data/its/";
 
     run<17, double, float, double>(path + std::string("dust.bin"), true);
     run<10, double, float, double>(path + std::string("city_temperature.bin"));
     run<12, double, float, double>(path + std::string("dew-point-temp.bin"));
-    /*
+
     run<15, double, float, double>(path + std::string("air-pressure.bin"));
     run<16, double, float, double>(path + std::string("wind-dir.bin"));
     run<13, double, float, double>(path + std::string("germany.bin"));
@@ -557,16 +600,25 @@ void neats_compression_full() {
 
     run<20, long double, double, double>(path + std::string("geolife-lat.bin"));
     run<20, long double, double, double>(path + std::string("geolife-lon.bin"));
-    */
 
     run<22, double, float, double>(path + std::string("bird-migration.bin"));
     run<24, double, float, double>(path + std::string("bitcoin-price.bin"));
     run<37, long double, double, double>(path + std::string("basel-temp.bin"));
     run<37, long double, double, double>(path + std::string("basel-wind.bin"));
 }
+*/
 
 int main(int argc, char *argv[]) {
-    dac_compression_full(std::cout);
+
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << " <full_fn>" << std::endl;
+        return 1;
+    }
+
+    auto full_fn = std::string(argv[1]);
+    //dac_compression_full(full_fn, std::cout);
+    squash_scan("lz4", full_fn, std::cout, 1000, -1, false);
+
     /*
     if (argc != 2) {
         std::cerr << "Usage: " << argv[0] << " <filename>" << std::endl;

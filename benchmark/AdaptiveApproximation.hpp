@@ -2,7 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <sdsl/int_vector.hpp>
-#include "float_pfa.hpp"
+#include "../include/float_pfa.hpp"
 
 template<typename poly_t = double, typename x_t = uint32_t, typename y_t = int64_t, typename T1 = float, typename T2 = double>
 class adaptive_approximation {
@@ -104,7 +104,6 @@ class adaptive_approximation {
         std::pair<poly_t, poly_t> compute_bounds(const data_point &p_next) {
             double l = (log(p_next.second - error_bound) - log(p_start.second)) / (p_next.first - p_start.first);
             double u = (log(p_next.second + error_bound) - log(p_start.second)) / (p_next.first - p_start.first);
-
             return std::make_pair(l, u);
         }
 
@@ -179,6 +178,7 @@ public:
         double alfa = 0.5;
 
         auto advance_model = [&](fun_t ft, const auto &p_next, const auto& p_start) {
+            //std::cout << "start_pos: " << start_pos << std::endl;
             switch (ft) {
                 case fun_t::linear:
                     if (!pla.add_point(gl, p_next)) {
@@ -207,15 +207,17 @@ public:
                         gq.clear();
                     }
                     break;
+                default:
+                    std::cerr << "Error: unknown model type" << std::endl;
+                    break;
             }
         };
 
-        fun_t bf;
+        fun_t bf = fun_t::linear;
         double npl, npe, npq;
         data_point p_next_l, p_next_e, p_next_q;
 
         while (start_pos < (_n - 1)) {
-
             if (!fcf) {
                 ++start_pos;
                 p_next_l = data_point{++xl, *(first + start_pos)};
@@ -309,7 +311,6 @@ public:
                                 frv = true;
                             }
                         }
-
                         break;
 
                     case fun_t::quadratic:
@@ -327,8 +328,12 @@ public:
                                 fcf = false;
                                 frv = true;
                             }
-                            break;
                         }
+                        break;
+                    default:
+                        std::cerr << "Error: unknown model type" << std::endl;
+                        std::cerr << "bf: " << bf << std::endl;
+                        break;
                 }
 
                 if (frv) {
@@ -488,15 +493,38 @@ public:
             return false;
         }
 
+        auto zeros = 0;
         for (auto i = 0; i < _n; ++i) {
             int64_t epsilon = error_bound;
             auto error = *(first + i) - decompressed[i];
+            if (error == 0) {
+                zeros++;
+            }
             if (error > epsilon || error < -(epsilon + 1)) {
                 std::cerr << "Error at position [" << i << "] is " << error << std::endl;
                 //return false;
             }
         }
+        std::cout << "Number of zeros: " << zeros << std::endl;
+        std::cout << "Number of models: " << starting_positions.size() << std::endl;
         return true;
+    }
+
+    template<typename It>
+    double mape(It first, It last) {
+        const auto decompressed = this->decompress();
+        //int64_t epsilon = BPC_TO_EPSILON(this->bpc);
+
+        if (std::distance(first, last) != _n) {
+            std::cerr << "Error: input size is different from the size of the compressed data" << std::endl;
+            return false;
+        }
+
+        double mape = 0.0;
+        for (auto i = 0; i < _n; ++i) {
+            mape += std::abs((*(first + i) - decompressed[i]) / (double) *(first + i));
+        }
+        return mape / _n;
     }
 
 };

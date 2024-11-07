@@ -161,13 +161,13 @@ namespace pfa {
             }
 
             inline auto get_approximations(const std::vector<linear>& data, const uint32_t n) const {
-                std::vector<y_t> result;
+                std::vector<y_t> result(n);
 
                 for (x_t start = 0; start < data.size(); ++start) {
                     auto f = data[start];
                     auto end = (start == data.size() - 1)? n : data[start + 1].starting_position;
                     for (x_t i = f.starting_position; i < end; ++i) {
-                        result.emplace_back(f(i + 1));
+                        result[i] = f(i + 1);
                     }
                 }
 

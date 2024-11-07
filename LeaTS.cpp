@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
     */
 
     std::string path = "/data/citypost/neat_datasets/binary/big/";
-    run<int64_t, int64_t, double, float, double>(std::string(full_fn), uint8_t(bpc), true);
+    run<int64_t, int64_t, double, float, float>(std::string(full_fn), uint8_t(bpc), true);
 
     //run<int64_t, int64_t, double, std::float32_t, std::float32_t>(path + std::string("wind-dir.bin"), 16);
     /*

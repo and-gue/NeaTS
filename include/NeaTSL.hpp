@@ -25,8 +25,7 @@ namespace neats {
 
         std::vector<x_t> starting_positions;
 
-        sdsl::bit_vector model_types_0;
-        sdsl::bit_vector model_types_1;
+        sdsl::int_vector<2> model_types{};
 
         std::vector<T1> coefficients_t0;
         std::vector<T1> coefficients_t1;
@@ -109,15 +108,13 @@ namespace neats {
 
             auto num_partitions = out.size();
             starting_positions = std::vector<x_t>(num_partitions, 0);
-            model_types_0 = sdsl::bit_vector(num_partitions, 0);
-            model_types_1 = sdsl::bit_vector(num_partitions, 0);
+            model_types = sdsl::int_vector<2>(num_partitions, 0);
 
             for (auto index_model = 0; index_model < out.size(); ++index_model) {
                 auto model = out[index_model];
 
                 auto mt = std::visit([](auto &&mo) { return (uint8_t) mo.type(); }, model);
-                model_types_0[index_model] = (mt & 0x1);
-                model_types_1[index_model] = (mt >> 1) & 0x1;
+                model_types[index_model] = mt;
                 starting_positions[index_model] = std::visit([](auto &&mo) {
                     return mo.get_start();
                 }, model);
@@ -180,7 +177,7 @@ namespace neats {
                 auto end = index_model == (l - 1) ? n : starting_positions[index_model + 1];
 
                 auto imt = index_model;
-                auto mt = (uint8_t) (model_types_0[imt]) | ((uint8_t) (model_types_1[imt]) << 1);
+                auto mt = model_types[imt];
 
                 auto t1 = coefficients_t1[offset_coefficients];
                 auto t2 = coefficients_t2[offset_coefficients];
@@ -206,8 +203,7 @@ namespace neats {
 
         size_t size_in_bits() const {
             size_t size = 0;
-            size += model_types_0.size();
-            size += model_types_1.size();
+            size += model_types.size() * 2;
             size += coefficients_t0.size() * sizeof(T1) * 8;
             size += coefficients_t1.size() * sizeof(T1) * 8;
             size += coefficients_t2.size() * sizeof(T2) * 8;
@@ -222,6 +218,78 @@ namespace neats {
 
         constexpr static auto max_err() {
             return max_error;
+        }
+
+        std::vector<y_t> decompress() const {
+            std::vector<y_t> res(_n);
+
+            auto num_partitions = starting_positions.size();
+
+            auto offset_coefficients_t0 = 0;
+            auto offset_coefficients_s = 0;
+            auto offset_coefficients = 0;
+
+            uint32_t i_segment = 0;
+            uint32_t start_segment = 0;
+            uint32_t end_segment;
+            x_t i = 0;
+
+            while (i < _n) {
+                if (i_segment >= (num_partitions - 1)) end_segment = _n;
+                else end_segment = starting_positions[i_segment + 1];
+
+                auto t = static_cast<poa_t::approx_fun_t>(model_types[i_segment]);
+                switch (t) {
+                    case poa_t::approx_fun_t::Linear: {
+                        auto slope = coefficients_t1[offset_coefficients];
+                        auto intercept = coefficients_t2[offset_coefficients];
+                        offset_coefficients++;
+                        auto start_pos = starting_positions[i_segment];
+                        for (uint32_t j = start_segment; j < end_segment; ++j) {
+                            res[i++] = std::ceil(slope * (j + 1 - start_pos) + intercept);
+                        }
+                        break;
+                    }
+
+                    case poa_t::approx_fun_t::Quadratic: {
+                        const auto a = coefficients_t0[offset_coefficients_t0++];
+                        const auto b = coefficients_t1[offset_coefficients];
+                        const auto c = coefficients_t2[offset_coefficients];
+                        offset_coefficients++;
+                        auto start_pos = starting_positions[i_segment];
+                        for (uint32_t j = start_segment; j < end_segment; ++j) {
+                            res[i++] = std::ceil(a * (j - start_pos) * (j - start_pos) + b * (j - start_pos) + c);
+                        }
+                        break;
+                    }
+
+                    case poa_t::approx_fun_t::Exponential: {
+                        const auto a = coefficients_t1[offset_coefficients];
+                        const auto b = coefficients_t2[offset_coefficients];
+                        offset_coefficients++;
+                        auto start_pos = starting_positions[i_segment];
+                        for (uint32_t j = start_segment; j < end_segment; ++j) {
+                            res[i++] = std::ceil(std::exp(a * ((j - start_pos) + 1)) * b);
+                        }
+                        break;
+                    }
+
+                    case poa_t::approx_fun_t::Sqrt: {
+                        const auto s = coefficients_s[offset_coefficients_s++];
+                        const auto a = coefficients_t1[offset_coefficients];
+                        const auto b = coefficients_t2[offset_coefficients];
+                        offset_coefficients++;
+                        auto start_pos = starting_positions[i_segment];
+                        for (uint32_t j = start_segment; j < end_segment; ++j) {
+                            res[i++] = std::ceil(a * std::sqrt((j - (start_pos - s) + 1)) + b);
+                        }
+                        break;
+                    }
+                }
+                ++i_segment;
+                start_segment = end_segment;
+            }
+            return res;
         }
 
     };

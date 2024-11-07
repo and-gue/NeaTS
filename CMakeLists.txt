@@ -23,3 +23,15 @@ target_link_libraries(SNeaTS PRIVATE sux sdsl)
 
 add_executable(NeaTSL NeaTSL.cpp)
 target_link_libraries(NeaTSL PRIVATE sux sdsl)
+
+add_executable(LossyNeaTS lossyNeaTS.cpp)
+target_link_libraries(LossyNeaTS PRIVATE sux sdsl)
+
+include_directories(/usr/local/include/squash-0.7)
+link_directories(/usr/local/lib)
+
+add_executable(Benchmark benchmark/neats_lossless.cpp
+        include/NeaTSL.hpp
+        include/algorithms.hpp
+        include/float_coefficient_space.hpp)
+target_link_libraries(Benchmark sdsl squash0.7 sux)

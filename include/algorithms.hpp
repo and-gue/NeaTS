@@ -12,6 +12,7 @@
 #include <unordered_set>
 #include <span>
 #include <ranges>
+#include <climits>
 
 /** Computes (bits_per_correction > 0 ? 2^(bits_per_correction-1) - 1 : 0) without the conditional operator. */
 #define BPC_TO_EPSILON(bits_per_correction) (((1ul << (bits_per_correction)) + 1) / 2 - 1)
@@ -92,6 +93,7 @@ namespace pfa::algorithm {
         auto n = std::distance(begin, end);
         auto pa = A{epsilon};
         auto res = pa.make_approximation(begin, end);
+
         auto approx = pa.get_approximations(res, n);
 
         int64_t num_errors = 0;
@@ -105,7 +107,6 @@ namespace pfa::algorithm {
                 std::cout << i << ": " << *(begin + i) << "!=" << approx[i] << std::endl;
             }
         }
-
         return res;
     }
 
@@ -163,121 +164,6 @@ namespace pfa::algorithm {
             }
         }
         return processed_data;
-    }
-
-    namespace transform {
-
-        //
-        template<typename U = uint32_t>
-        inline auto to_uintk(const auto &text, const U k) {
-            auto n = text.size();
-            constexpr size_t txt_value_bit_size = sizeof(typename std::decay_t<decltype(text)>::value_type) * CHAR_BIT;
-            auto txt_bit_size = n * txt_value_bit_size;
-            sdsl::bit_vector bv(txt_bit_size, 0);
-            for (auto i = 0; i < n; ++i) {
-                for (auto j = 0; j < txt_value_bit_size; ++j) {
-                    bv[i * txt_value_bit_size + j] = (text[i] >> j) & 1;
-                }
-            }
-
-            std::set<U> symbols_set{};
-            std::vector<U> itext(std::ceil(txt_bit_size / k) + 1, 0);
-            size_t i_bit_txt, i = 0;
-            for (; i_bit_txt + k < txt_bit_size; i_bit_txt += k, ++i) {
-                U wordk_builder = 0;
-                for (auto j = 0; j < k; ++j) {
-                    // original endian
-                    wordk_builder |= (U) bv[i_bit_txt + j] << j;
-                    // reverse endian
-                    //wordk_builder |= (uint_t) bv[i_bit_txt + j] << (k - j - 1);
-                }
-                itext[i] = wordk_builder;
-                symbols_set.insert(wordk_builder);
-            }
-
-            if (i_bit_txt < txt_bit_size) {
-                U wordk_builder = 0;
-                for (auto j = 0; i_bit_txt < txt_bit_size; ++i_bit_txt, ++j) {
-                    // original endian
-                    wordk_builder |= (U) bv[i_bit_txt] << j;
-                    // reverse endian
-                    //wordk_builder |= (uint_t) bv[i_bit_txt] << (k - j - 1);
-                }
-                itext[i] = wordk_builder;
-                symbols_set.insert(wordk_builder);
-            }
-
-            //if (txt_bit_size % k != 0) {
-            itext[itext.size() - 1] = 0;
-            symbols_set.insert(0);
-            //}
-
-            auto symbols_vec = std::vector<U>{symbols_set.begin(), symbols_set.end()};
-            return std::pair<std::decay_t<decltype(symbols_vec)>, std::decay_t<decltype(itext)>>{symbols_vec, itext};
-        }
-
-
-        // apply move-to-front encoding
-        template<typename T>
-        static inline auto mtf_encode(const auto &in, const std::vector<T> &alphabet) {
-            std::vector<T> out(in.size());
-
-            //auto symbols_set = std::unordered_set<T>{in.begin(), in.end()};
-            const auto K = alphabet.size();
-
-            //std::vector<T> symbols_vec{symbols_set.begin(), symbols_set.end()};
-            //symbols_set.clear();
-
-            std::vector<const T *> symbol_by_rank(K);
-            for (auto i = 0; i < K; ++i) {
-                symbol_by_rank[i] = &alphabet[i];
-            }
-
-
-            std::unordered_map<T, const T **> rank_by_symbol;
-            for (auto i = 0; i < K; ++i) {
-                rank_by_symbol[*symbol_by_rank[i]] = &symbol_by_rank[i];
-            }
-
-            auto i = 0;
-            for (auto &&val: in) {
-                auto ptr_rank = rank_by_symbol[val];
-
-                auto val_rank = std::ptrdiff_t(ptr_rank - symbol_by_rank.data());
-                out[i++] = val_rank;
-
-                std::ranges::rotate(symbol_by_rank.begin(), symbol_by_rank.begin() + val_rank,
-                                    symbol_by_rank.begin() + val_rank + 1);
-            }
-            return out;
-        }
-
-        /*
-        template<typename T>
-        auto inline decode(const auto &in_mtf, const std::vector<T> &sigma) {
-
-            const auto K = sigma.size();
-
-            std::vector<const T *> symbol_by_rank(K);
-            for (auto i = 0; i < K; ++i) {
-                symbol_by_rank[i] = &sigma[i];
-            }
-
-            std::unordered_map<T, const T **> rank_by_symbol;
-            for (auto i = 0; i < K; ++i) {
-                rank_by_symbol[*symbol_by_rank[i]] = &symbol_by_rank[i];
-            }
-
-            for (auto i = 0; i < in_mtf.size(); ++i) {
-                out[i] = *symbol_by_rank[in_mtf[i]];
-                std::ranges::rotate(symbol_by_rank.begin(), symbol_by_rank.begin() + in_mtf[i],
-                                    symbol_by_rank.begin() + in_mtf[i] + 1);
-            }
-            return out;
-        }
-        */
-
-
     }
 
     namespace io {

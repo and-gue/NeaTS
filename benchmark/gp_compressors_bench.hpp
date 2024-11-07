@@ -1,7 +1,7 @@
 #pragma once
 
-#include "utils.hpp"
 #include <squash-0.7/squash/squash.h>
+#include "../include/algorithms.hpp"
 
 template<class T>
 void do_not_optimize(T const &value) {
@@ -18,7 +18,7 @@ const auto to_bytes = [](auto &&x) -> std::array<uint8_t, sizeof(T)> {
 
 
 void squash_random_access(const std::string &compressor, const std::string &filename,
-                          std::ostream &out, size_t block_size = 1000, int level = -1, bool first_is_size=true) {
+                          std::ostream &out, size_t block_size = 1000, int level = -1, bool first_is_size = true) {
 
     using T = int64_t;
 
@@ -32,7 +32,7 @@ void squash_random_access(const std::string &compressor, const std::string &file
         char level_s[4];
         opts = squash_options_new(codec, NULL);
         squash_object_ref_sink(opts);
-        snprintf (level_s, 4, "%d", level);
+        snprintf(level_s, 4, "%d", level);
         auto res_parse = squash_options_parse_option(opts, "level", level_s);
 
         if (res_parse != SQUASH_OK) {
@@ -41,7 +41,7 @@ void squash_random_access(const std::string &compressor, const std::string &file
         }
     }
 
-    const auto data = fa::utils::read_data_binary<T, T>(filename, first_is_size);
+    const auto data = pfa::algorithm::io::read_data_binary<T, T>(filename, first_is_size);
     const size_t n = data.size(); // number of values
     const auto num_blocks = n / block_size;
 
@@ -128,6 +128,134 @@ void squash_random_access(const std::string &compressor, const std::string &file
     out << time / num_queries << std::endl;
 }
 
+void squash_scan(const std::string &compressor, const std::string &filename,
+                 std::ostream &out, size_t block_size = 1000, int level = -1, bool first_is_size = true) {
+
+    using T = int64_t;
+
+    SquashCodec *codec = squash_get_codec(compressor.c_str());
+    if (codec == nullptr) {
+        throw std::runtime_error("Unable to find algorithm" + std::string(compressor));
+    }
+
+    SquashOptions *opts = nullptr;
+    if (level != -1) {
+        char level_s[4];
+        opts = squash_options_new(codec, NULL);
+        squash_object_ref_sink(opts);
+        snprintf(level_s, 4, "%d", level);
+        auto res_parse = squash_options_parse_option(opts, "level", level_s);
+
+        if (res_parse != SQUASH_OK) {
+            throw std::runtime_error("Unable to set level: " + std::to_string(level));
+            exit(-1);
+        }
+    }
+
+    const auto data = pfa::algorithm::io::read_data_binary<T, T>(filename, first_is_size);
+    const size_t n = data.size(); // number of values
+    const auto num_blocks = n / block_size;
+
+    size_t total_compressed_size = 0;
+    std::vector<std::pair<uint8_t *, size_t>> compressed_data_blocks(num_blocks + 1);
+    for (auto ib = 0; ib < num_blocks + 1; ++ib) {
+        const auto bs = std::min(block_size, n - ib * block_size);
+        auto data_block = std::vector<int64_t>(data.begin() + (ib * (int64_t) block_size),
+                                               data.begin() + (ib * (int64_t) block_size) + (int64_t) bs);
+
+        std::vector<uint8_t> data_block_bytes;
+        std::for_each(data_block.begin(), data_block.end(), [&](const auto &y) {
+            auto bts = to_bytes<T>(y);
+            data_block_bytes.insert(data_block_bytes.end(), bts.begin(), bts.end());
+        });
+
+        size_t uncompressed_size_in_bytes = data_block_bytes.size();
+        size_t compressed_size_in_bytes = squash_get_max_compressed_size(compressor.data(),
+                                                                         uncompressed_size_in_bytes);
+        auto *compressed_data = (uint8_t *) malloc(compressed_size_in_bytes);
+
+        SquashStatus res = squash_compress(compressor.data(), &compressed_size_in_bytes, compressed_data,
+                                           uncompressed_size_in_bytes, data_block_bytes.data(), nullptr);
+
+        compressed_data_blocks[ib] = {compressed_data, compressed_size_in_bytes};
+
+        if (res != SQUASH_OK) {
+            throw std::runtime_error("Unable to compress data: " + filename + " with compressor: " + compressor);
+        }
+        total_compressed_size += compressed_size_in_bytes * CHAR_BIT;
+    }
+
+    auto scan_fun = [&](size_t range) {
+        // Generating datasets of integers for the queries
+        size_t num_queries = 10000;
+        std::mt19937 mt1(1234);
+        size_t buffer_blocks = size_t(std::ceil(range / (double) block_size)) + 1;
+        // select query
+        std::uniform_int_distribution<size_t> dist1(0, (n - block_size * buffer_blocks));
+        std::vector<size_t> indexes(num_queries);
+        for (auto i = 0; i < num_queries; ++i) {
+            indexes[i] = (dist1(mt1));
+        }
+
+        auto t1 = std::chrono::high_resolution_clock::now();
+        auto decompressed_buffer_size = buffer_blocks * block_size * sizeof(int64_t) + 1;
+        auto *decompressed_data = (uint8_t *) malloc(decompressed_buffer_size);
+        for (unsigned long index: indexes) {
+            auto ib = index / block_size;
+            auto jb = ((index + range) / block_size) + 1;
+            auto offset = index % block_size;
+            auto bs = std::min(block_size, n - ib * block_size);
+            size_t decompressed_size_in_bytes = bs * sizeof(int64_t) + 1;
+            size_t compressed_size_in_bytes = compressed_data_blocks[ib].second;
+
+            auto res = SQUASH_OK;
+            for (auto i = ib; i < jb; ++i) {
+                res = squash_decompress(compressor.data(), &decompressed_size_in_bytes,
+                                        (uint8_t *) decompressed_data + ((i - ib) * block_size * sizeof(int64_t)),
+                                        compressed_size_in_bytes,
+                                        (uint8_t *) compressed_data_blocks[ib].first,
+                                        nullptr);
+            }
+
+            decompressed_data[decompressed_size_in_bytes] = '\0';
+            do_not_optimize(decompressed_data);
+            if (res != SQUASH_OK) {
+                throw std::runtime_error("Unable to decompress data: " + filename + " with compressor: " + compressor);
+            }
+            /*
+            int64_t value = 0;
+            for (auto j = 0; j < sizeof(int64_t); j++) {
+                value = (value << 8) + decompressed_data[(offset * sizeof(int64_t)) + j];
+            }
+            if (data[index] != value) throw std::runtime_error("Error during random access");
+            free(decompressed_data);
+            */
+        }
+
+        auto t2 = std::chrono::high_resolution_clock::now();
+        auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
+        free(decompressed_data);
+        auto speed = (((range * 8) * num_queries) / 1e6) / ((double) time / 1e9);
+
+        std::cout << speed << ",";
+    };
+
+    std::cout << "compressor,filename" << std::endl;
+    std::cout << compressor << "," << filename << ",";
+    for (auto i = 10; i <= 1000000; i *= 2) {
+        scan_fun(i);
+    }
+    std::cout << std::endl;
+
+    for (auto &compressed_data_block: compressed_data_blocks) {
+        free(compressed_data_block.first);
+    }
+
+    if (opts != nullptr) {
+        squash_object_unref(opts);
+    }
+
+}
 
 void squash_full(const std::string &compressor,
                  const std::string &filename,
@@ -148,7 +276,7 @@ void squash_full(const std::string &compressor,
         char level_s[4];
         opts = squash_options_new(codec, NULL);
         squash_object_ref_sink(opts);
-        snprintf (level_s, 4, "%d", level);
+        snprintf(level_s, 4, "%d", level);
         auto res_parse = squash_options_parse_option(opts, "level", level_s);
 
         if (res_parse != SQUASH_OK) {
@@ -157,7 +285,7 @@ void squash_full(const std::string &compressor,
         }
     }
 
-    auto data = fa::utils::read_data_binary<T, T>(filename, first_is_size);
+    auto data = pfa::algorithm::io::read_data_binary<T, T>(filename, first_is_size);
     const size_t n = data.size(); // number of values
     const auto num_blocks = n / block_size;
 
@@ -183,7 +311,7 @@ void squash_full(const std::string &compressor,
         auto *compressed_data = (uint8_t *) malloc(compressed_size_in_bytes);
 
         SquashStatus res = squash_compress_with_options(compressor.data(), &compressed_size_in_bytes, compressed_data,
-                                           uncompressed_size_in_bytes, data_block_bytes.data(), opts);
+                                                        uncompressed_size_in_bytes, data_block_bytes.data(), opts);
         auto t2 = std::chrono::high_resolution_clock::now();
         compression_time_ns += duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
 
@@ -237,5 +365,6 @@ void squash_full(const std::string &compressor,
     out << total_compressed_size << ','; // compressed_storage_bit_size
     out << compression_time_ns << ','; // compression_time(ns)
     out << decompression_time_ns << ','; // decompression_time(ns)
-    out << static_cast<long double>(total_compressed_size) / static_cast<long double>(n * sizeof(T) * 8) ; // compression_ratio
+    out << static_cast<long double>(total_compressed_size) /
+           static_cast<long double>(n * sizeof(T) * 8); // compression_ratio
 }
