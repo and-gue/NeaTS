@@ -1,6 +1,6 @@
 #pragma once
 
-#include "float_coefficient_space.hpp"
+#include "float_dpfa.hpp"
 #include "algorithms.hpp"
 
 namespace pfa {
@@ -56,10 +56,10 @@ namespace pfa {
                 x_t starting_position;
                 T1 a;
                 T2 b;
-                //segment_t d{};
+                //Segment d{};
 
                 constexpr linear() : starting_position{0}, a{}, b{} {}
-                //constexpr linear(x_t pos, const T1 &m, const T2 &q, const segment_t &d_ = segment_t{}) : starting_position{pos}, a(m), b{q}, d(d_) {}
+                //constexpr linear(x_t pos, const T1 &m, const T2 &q, const Segment &d_ = Segment{}) : starting_position{pos}, a(m), b{q}, d(d_) {}
                 constexpr linear(x_t pos, const T1 &m, const T2 &q) : starting_position{pos}, a(m), b{q} {}
 
                 inline y_t operator()(x_t i) const {
@@ -101,7 +101,7 @@ namespace pfa {
                     auto _b1 = _a1 * z + d.p1().y();
 
                     auto y = a * z + b;
-                    return linear{s1, a, y, segment_t::from_points(point_t{_a0, _b0}, point_t{_a1, _b1})};
+                    return linear{s1, a, y, Segment::from_points(Point{_a0, _b0}, Point{_a1, _b1})};
                 }
                 */
 
@@ -121,7 +121,7 @@ namespace pfa {
                 }
 
                 /*
-                constexpr inline segment_t diagonal() const {
+                constexpr inline Segment diagonal() const {
                     return d;
                 }
                 */
@@ -138,13 +138,13 @@ namespace pfa {
 
             static constexpr linear create_fun(const convex_polygon_t &g, const data_point &p) {
                 if (g.empty()) {
-                    //auto d = segment_t::from_points(point_t{0.0, static_cast<T2>(p.second)}, point_t{0.0, static_cast<T2>(p.second)});
+                    //auto d = Segment::from_points(Point{0.0, static_cast<T2>(p.second)}, Point{0.0, static_cast<T2>(p.second)});
                     //return linear{p.first, 0.0, static_cast<T2>(p.second), d};
                     return linear{p.first, static_cast<T1>(0.0), static_cast<T2>(p.second)};
                 } else if (g.is_init()) {
                     auto [u0, l0] = g.init.value();
                     auto b = (u0._s._q + l0._s._q) / 2.0;
-                    //auto d = segment_t::from_points(point_t{0.0, static_cast<T2>(b)}, point_t{0.0, static_cast<T2>(b)});
+                    //auto d = Segment::from_points(Point{0.0, static_cast<T2>(b)}, Point{0.0, static_cast<T2>(b)});
                     //return linear{p.first, 0.0, static_cast<T2>(b), d};
                     return linear{p.first, static_cast<T1>(0.0), static_cast<T2>(b)};
                 } else {
@@ -154,7 +154,7 @@ namespace pfa {
                     auto mp_a = (pl.x() + pr.x()) / 2.0;
                     auto mp_b = (pr.y() + pl.y()) / 2.0;
 
-                    //auto d = segment_t::from_points(pl, pr);
+                    //auto d = Segment::from_points(pl, pr);
                     //return linear{p.first, static_cast<T1>(mp_a), static_cast<T2>(mp_b), d};
                     return linear{p.first, static_cast<T1>(mp_a), static_cast<T2>(mp_b)};
                 }
@@ -250,13 +250,13 @@ namespace pfa {
                 x_t d = 0;
                 T1 a;
                 T2 b;
-                //segment_t _diagonal{};
+                //Segment _diagonal{};
 
                 constexpr sqrt() : starting_position{0}, a{}, b{} {}
 
-                //constexpr sqrt(x_t pos, const T1 _a, const T2 _b, const segment_t& diagonal) : starting_position{pos}, a{_a}, b{_b}, _diagonal{diagonal} {}
+                //constexpr sqrt(x_t pos, const T1 _a, const T2 _b, const Segment& diagonal) : starting_position{pos}, a{_a}, b{_b}, _diagonal{diagonal} {}
                 constexpr sqrt(x_t pos, const T1 _a, const T2 _b) : starting_position{pos}, a{_a}, b{_b} {}
-                //constexpr sqrt(x_t pos0, x_t pos1, const T1 _a, const T2 _b, const segment_t &diagonal = segment_t{}) : starting_position{pos0}, d{pos1}, a{_a}, b{_b}, _diagonal{diagonal} {}
+                //constexpr sqrt(x_t pos0, x_t pos1, const T1 _a, const T2 _b, const Segment &diagonal = Segment{}) : starting_position{pos0}, d{pos1}, a{_a}, b{_b}, _diagonal{diagonal} {}
                 constexpr sqrt(x_t pos0, x_t pos1, const T1 _a, const T2 _b) : starting_position{pos0}, d{pos1}, a{_a}, b{_b} {}
 
                 inline y_t operator()(x_t i) const {
@@ -295,7 +295,7 @@ namespace pfa {
                 }
 
                 /*
-                constexpr inline segment_t diagonal() const {
+                constexpr inline Segment diagonal() const {
                     return _diagonal;
                 }
                 */
@@ -312,13 +312,13 @@ namespace pfa {
 
             static constexpr sqrt create_fun(const convex_polygon_t &g, const data_point &p) {
                 if (g.empty()) {
-                    //auto _d = segment_t::from_points(point_t{0.0, static_cast<T2>(p.second)}, point_t{0.0, static_cast<T2>(p.second)});
+                    //auto _d = Segment::from_points(Point{0.0, static_cast<T2>(p.second)}, Point{0.0, static_cast<T2>(p.second)});
                     //return sqrt{p.first, 0.0, static_cast<T2>(p.second), _d};
                     return sqrt{p.first, static_cast<T1>(0.0), static_cast<T2>(p.second)};
                 } else if (g.is_init()) {
                     auto [u0, l0] = g.init.value();
                     auto b = (u0._s._q + l0._s._q) / 2.0;
-                    //auto _d = segment_t::from_points(point_t{0.0, static_cast<T2>(b)}, point_t{0.0, static_cast<T2>(b)});
+                    //auto _d = Segment::from_points(Point{0.0, static_cast<T2>(b)}, Point{0.0, static_cast<T2>(b)});
                     //return sqrt{p.first, 0.0, static_cast<T2>(b), _d};
                     return sqrt{p.first, static_cast<T1>(0.0), static_cast<T2>(b)};
                 } else {
@@ -328,7 +328,7 @@ namespace pfa {
                     auto mp_a = (pl.x() + pr.x()) / 2.0;
                     auto mp_b = (pr.y() + pl.y()) / 2.0;
 
-                    //auto _d = segment_t::from_points(pl, pr);
+                    //auto _d = Segment::from_points(pl, pr);
                     //return sqrt{p.first, static_cast<T1>(mp_a), static_cast<T2>(mp_b), _d};
                     return sqrt{p.first, static_cast<T1>(mp_a), static_cast<T2>(mp_b)};
                 }
@@ -408,11 +408,11 @@ namespace pfa {
                 x_t starting_position;
                 T1 a;
                 T2 b;
-                //segment_t _diagonal{};
+                //Segment _diagonal{};
 
                 constexpr exponential() : starting_position{0}, a{}, b{} {}
 
-                //constexpr exponential(x_t pos, const T1 _a, const T2 _b, const segment_t &d = segment_t{}) : starting_position{pos}, a{_a}, b{_b}, _diagonal{d} {}
+                //constexpr exponential(x_t pos, const T1 _a, const T2 _b, const Segment &d = Segment{}) : starting_position{pos}, a{_a}, b{_b}, _diagonal{d} {}
                 constexpr exponential(x_t pos, const T1 _a, const T2 _b) : starting_position{pos}, a{_a}, b{_b} {}
 
                 inline y_t operator()(x_t i) const {
@@ -458,7 +458,7 @@ namespace pfa {
 
                     T1 a1 = a;
                     auto b1 = b * std::exp(a * z);
-                    return exponential{s1, static_cast<T1>(a1), static_cast<T2>(b1), segment_t::from_points(point_t{_a0, _b0}, point_t{_a1, _b1})};
+                    return exponential{s1, static_cast<T1>(a1), static_cast<T2>(b1), Segment::from_points(Point{_a0, _b0}, Point{_a1, _b1})};
                 }
                 */
 
@@ -473,7 +473,7 @@ namespace pfa {
                 }
 
                 /*
-                constexpr inline segment_t diagonal() const {
+                constexpr inline Segment diagonal() const {
                     return _diagonal;
                 }
                 */
@@ -490,13 +490,13 @@ namespace pfa {
 
             static constexpr exponential create_fun(const convex_polygon_t &g, const data_point &p) {
                 if (g.empty()) {
-                    //auto d = segment_t::from_points(point_t{0.0, static_cast<T2>(p.second)}, point_t{0.0, static_cast<T2>(p.second)});
+                    //auto d = Segment::from_points(Point{0.0, static_cast<T2>(p.second)}, Point{0.0, static_cast<T2>(p.second)});
                     //return exponential{p.first, 0.0, static_cast<T2>(p.second), d};
                     return exponential{p.first, static_cast<T1>(0.0), static_cast<T2>(p.second)};
                 } else if (g.is_init()) {
                     auto [u0, l0] = g.init.value();
                     auto b = (u0._s._q + l0._s._q) / 2.0;
-                    //auto d = segment_t::from_points(point_t{0.0, static_cast<T2>(b)}, point_t{0.0, static_cast<T2>(b)});
+                    //auto d = Segment::from_points(Point{0.0, static_cast<T2>(b)}, Point{0.0, static_cast<T2>(b)});
                     //return exponential{p.first, 0.0, static_cast<T2>(std::exp(b)), d};
                     return exponential{p.first, static_cast<T1>(0.0), static_cast<T2>(std::exp(b))};
                 } else {
@@ -510,7 +510,7 @@ namespace pfa {
                     //auto mp_a = pl.x();
                     //auto mp_b = pl.y();
 
-                    //auto d = segment_t::from_points(pl, pr);
+                    //auto d = Segment::from_points(pl, pr);
                     //return exponential{p.first, static_cast<T1>(mp_a), static_cast<T2>(std::exp(mp_b)), d};
                     return exponential{p.first, static_cast<T1>(mp_a), static_cast<T2>(std::exp(mp_b))};
                 }
@@ -603,11 +603,11 @@ namespace pfa {
                 T1 a;
                 T1 b;
                 T2 c;
-                //segment_t _diagonal{};
+                //Segment _diagonal{};
 
                 constexpr quadratic() : starting_position{0}, a{}, b{}, c{} {}
 
-                //constexpr quadratic(x_t pos, const T1 _a, const T1 _b, const T2 _c, const segment_t &d = segment_t{}) : starting_position{pos}, a{_a}, b{_b}, c{_c}, _diagonal{d} {}
+                //constexpr quadratic(x_t pos, const T1 _a, const T1 _b, const T2 _c, const Segment &d = Segment{}) : starting_position{pos}, a{_a}, b{_b}, c{_c}, _diagonal{d} {}
                 constexpr quadratic(x_t pos, const T1 _a, const T1 _b, const T2 _c) : starting_position{pos}, a{_a}, b{_b}, c{_c} {}
 
                 inline y_t operator()(x_t i) const {
@@ -668,7 +668,7 @@ namespace pfa {
                     auto a1 = a;
                     auto b1 = 2 * a1 * z + b;
                     auto c1 = a1 * z * z + b * z + c;
-                    return quadratic{s1, static_cast<T1>(a1), static_cast<T1>(b1), static_cast<T2>(c1), segment_t::from_points(point_t{_a0, _b0}, point_t{_a1, _b1})};
+                    return quadratic{s1, static_cast<T1>(a1), static_cast<T1>(b1), static_cast<T2>(c1), Segment::from_points(Point{_a0, _b0}, Point{_a1, _b1})};
                 }*/
 
                 inline quadratic copy(x_t s1) const {
@@ -684,7 +684,7 @@ namespace pfa {
                 }
 
                 /*
-                constexpr inline segment_t diagonal() const {
+                constexpr inline Segment diagonal() const {
                     return _diagonal;
                 }
                 */
@@ -701,13 +701,13 @@ namespace pfa {
 
             static constexpr quadratic create_fun(const convex_polygon_t &g, const data_point &p) {
                 if (g.empty()) {
-                    //auto d = segment_t::from_points(point_t{0.0, static_cast<T2>(p.second)}, point_t{0.0, static_cast<T2>(p.second)});
+                    //auto d = Segment::from_points(Point{0.0, static_cast<T2>(p.second)}, Point{0.0, static_cast<T2>(p.second)});
                     //return quadratic{p.first, 0.0, 0.0, static_cast<T2>(p.second), d};
                     return quadratic{p.first, static_cast<T1>(0.0), static_cast<T1>(0.0), static_cast<T2>(p.second)};
                 } else if (g.is_init()) {
                     auto [u0, l0] = g.init.value();
                     auto b = (u0._s._q + l0._s._q) / 2.0;
-                    //auto d = segment_t::from_points(point_t{0.0, static_cast<T2>(b)}, point_t{0.0, static_cast<T2>(b)});
+                    //auto d = Segment::from_points(Point{0.0, static_cast<T2>(b)}, Point{0.0, static_cast<T2>(b)});
                     //return quadratic{p.first, 0.0, static_cast<T1>(b), static_cast<T2>(p.second), d};
                     return quadratic{p.first, static_cast<T1>(0.0), static_cast<T1>(b), static_cast<T2>(p.second)};
                 } else {
@@ -717,7 +717,7 @@ namespace pfa {
                     auto mp_a = (pl.x() + pr.x()) / 2.0;
                     auto mp_b = (pr.y() + pl.y()) / 2.0;
 
-                    //auto d = segment_t::from_points(pl, pr);
+                    //auto d = Segment::from_points(pl, pr);
                     //return quadratic{p.first, static_cast<T1>(mp_a), static_cast<T1>(mp_b), static_cast<T2>(p.second), d};
                     return quadratic{p.first, static_cast<T1>(mp_a), static_cast<T1>(mp_b), static_cast<T2>(p.second)};
                 }

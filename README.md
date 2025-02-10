@@ -1,6 +1,6 @@
 # NeaTS: Learned Compression of Nonlinear Time Series With Random Access
 
-NeaTS is a randomly-accessible compression scheme that approximates properly-chosen fragments of the time series with the “best” nonlinear function learned from the data.
+NeaTS is a randomly-accessible compression scheme that approximates properly-chosen _fragments of the time series with the “best” nonlinear function learned from the data.
 
 ## Build the project 🔧
 Clone this repo, then run:

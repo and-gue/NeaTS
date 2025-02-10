@@ -33,5 +33,8 @@ link_directories(/usr/local/lib)
 add_executable(Benchmark benchmark/neats_lossless.cpp
         include/NeaTSL.hpp
         include/algorithms.hpp
-        include/float_coefficient_space.hpp)
+        include/coefficients_space.hpp)
 target_link_libraries(Benchmark sdsl squash0.7 sux)
+
+add_executable(NeatsPGM include/simple.cpp)
+target_link_libraries(NeatsPGM sdsl sux)

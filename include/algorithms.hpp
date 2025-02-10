@@ -13,6 +13,7 @@
 #include <span>
 #include <ranges>
 #include <climits>
+#include <experimental/simd>
 
 /** Computes (bits_per_correction > 0 ? 2^(bits_per_correction-1) - 1 : 0) without the conditional operator. */
 #define BPC_TO_EPSILON(bits_per_correction) (((1ul << (bits_per_correction)) + 1) / 2 - 1)
@@ -201,6 +202,48 @@ namespace pfa::algorithm {
                 std::cerr << std::strerror(errno) << std::endl;
                 exit(1);
             }
+        }
+
+        template<typename TypeIn>
+        inline std::vector<TypeIn> simd_preprocess(const std::string& fn, auto bpc, bool first_is_size) {
+            namespace stdx = std::experimental;
+            using simd_t = stdx::native_simd<TypeIn>;
+            constexpr auto simd_width = simd_t::size();
+
+            auto simd_min = [](auto &&ptr, auto n) {
+                simd_t simd_w;
+                typename simd_t::value_type min_val = 0;
+                auto j{0};
+                for (; j + simd_width <= n; j += simd_width) {
+                    simd_w.copy_from(ptr + j, stdx::element_aligned);
+                    auto _min = stdx::hmin(simd_w);
+                    min_val = std::min(min_val, _min);
+                }
+                for (; j < n; ++j) {
+                    min_val = std::min(min_val, ptr[j]);
+                }
+                return min_val - 1;
+            };
+
+            auto simd_preprocess = [](auto &&ptr, uint32_t n, TypeIn v) {
+                simd_t simd_w;
+                simd_t simd_eps{v};
+
+                auto j{0};
+                for (; j + simd_width <= n; j += simd_width) {
+                    simd_w.copy_from(ptr + j, stdx::element_aligned);
+                    simd_w -= simd_eps;
+                    simd_w.copy_to(ptr + j, stdx::element_aligned);
+                }
+                for (; j < n; ++j) {
+                    ptr[j] -= v;
+                }
+            };
+
+            auto data_vec = pfa::algorithm::io::read_data_binary<int64_t, int64_t>(fn, first_is_size);
+            auto epsilon = static_cast<TypeIn>(bpc);
+            simd_preprocess(data_vec.data(), data_vec.size(), simd_min(data_vec.data(), data_vec.size()) - epsilon);
+            return data_vec;
         }
 
         template<typename TypeIn, typename TypeOut>

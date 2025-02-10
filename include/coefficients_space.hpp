@@ -10,7 +10,7 @@
 #include <variant>
 #include <algorithm>
 
-namespace pfa {
+namespace neats::internal {
 
     template<class... Ts>
     struct match : Ts ... {
@@ -21,14 +21,14 @@ namespace pfa {
     match(Ts...) -> match<Ts...>;
 
     template<typename T>
-    struct convex_polygon {
+    struct ConvexPolygon {
 
-        struct point_t {
+        struct Point {
             T _x;
             T _y;
 
-            constexpr point_t() = default;
-            constexpr point_t(const T x, const T y) : _x{x}, _y{y} {}
+            constexpr Point() = default;
+            constexpr Point(const T x, const T y) : _x{x}, _y{y} {}
 
             [[nodiscard]] constexpr T x() const {
                 return _x;
@@ -38,59 +38,30 @@ namespace pfa {
                 return _y;
             }
 
-            [[nodiscard]] constexpr bool operator==(const point_t &p) const {
+            [[nodiscard]] constexpr bool operator==(const Point &p) const {
                 return _x == p._x && _y == p._y;
             }
 
-            [[nodiscard]] constexpr bool operator!=(const point_t &p) const {
+            [[nodiscard]] constexpr bool operator!=(const Point &p) const {
                 return !(*this == p);
             }
         };
 
-        using value_t = T;
+        //using value_t = T;
 
-        struct segment_t {
+        struct Segment {
             T _m;
             T _q;
 
             T _x0;
             T _x1;
 
-            constexpr segment_t() = default;
-            constexpr segment_t(const T m, const T q,
-                                const T x0 = std::numeric_limits<T>::lowest(),
-                                const T x1 = std::numeric_limits<T>::max()) : _m{m}, _q{q}, _x0{x0}, _x1{x1} {
-                //assert(segment_t::eq(x0, x1, 25) || x0 < x1);
+            constexpr Segment() = default;
+            constexpr Segment(const T m, const T q,
+                              const T x0 = std::numeric_limits<float>::lowest(),
+                              const T x1 = std::numeric_limits<float>::max()) : _m{m}, _q{q}, _x0{x0}, _x1{x1} {
+                //assert(Segment::eq(x0, x1, 25) || x0 < x1);
             }
-
-            /*
-            static inline bool eq(T x, T y, uint32_t ulp = 0) {
-                static_assert(std::is_floating_point<T>::value, "T must be a floating point type");
-                using I = std::conditional_t<sizeof(T) <= 4, int32_t, int64_t>;
-                I xi = *(I *) &x;
-                if (xi < 0) xi = ~xi + 1;
-
-                I yi = *(I *) &y;
-                if (yi < 0) yi = ~yi + 1;
-
-                auto diff = std::abs(xi - yi);
-                return diff <= ulp;
-            }
-            */
-
-            /*
-            static inline bool eq(T x, T x_) {
-                static_assert(std::is_floating_point_v<T>, "T must be a floating point type");
-                T precision;
-                if constexpr (std::same_as<T, double>) precision = 1e-13;
-                else {
-                    static_assert(std::same_as<T, long double>, "T must be a floating point type");
-                    precision = 1e-16;
-                }
-                if (x == 0.0 || x_ == 0.0) return fabs(x - x_) < precision;
-                return (x == x_) || (fabs(x - x_) < precision * fabs(x));
-            }
-            */
 
             static inline bool eq(T x, T x_, T max_abs_diff = 1e-12, T max_rel_diff = 1e-15) {
                 if constexpr (sizeof(T) > 8) {
@@ -102,8 +73,8 @@ namespace pfa {
                 T mx = std::max(std::fabs(x), std::fabs(x_));
 
                 /*
-                // Check if the numbers are really close -- needed
-                // when comparing numbers near zero.
+                // Check if the numbers are really close --
+                // needed when comparing numbers near zero.
                 auto diff = fabs(x - x_);
                 if (diff <= max_abs_diff) return true;
 
@@ -117,35 +88,47 @@ namespace pfa {
                 return abs_diff <= max_abs_diff || abs_diff <= mx * max_rel_diff;
             }
 
-            static inline segment_t from_points(const point_t &p0, const point_t &p1) {
+            static inline Segment from_points(const Point &p0, const Point &p1) {
 
                 /*
                 if (eq(p0.x(), p1.x())) {
-                    return segment_t{0, std::, p0.x(), p1.x()};
-                    //return segment_t::vertical(p0.x(), std::min(p0.y(), p1.y()), std::_MAX(p0.y(), p1.y()));
+                    return Segment{0, std::, p0.x(), p1.x()};
+                    //return Segment::vertical(p0.x(), std::min(p0.y(), p1.y()), std::_MAX(p0.y(), p1.y()));
                 }
                 */
 
                 if (p1.x() == p0.x()) {
                     //assert(p0.y() == p1.y());
-                    return segment_t{0, p0.y(), p0.x(), p1.x()};
+                    return Segment{0, (p1.y() - p0.y()) / 2., p0.x(), p1.x()};
                 }
 
                 auto m = (p1.y() - p0.y()) / (p1.x() - p0.x());
                 auto q = p0.y() - m * p0.x();
 
-                return segment_t{m, q, p0.x(), p1.x()};
+                return Segment{m, q, p0.x(), p1.x()};
             }
 
-            inline point_t p0() const {
-                return point_t{_x0, _m * _x0 + _q};
+            inline Point p0() const {
+                return Point{_x0, _m * _x0 + _q};
             }
 
-            inline point_t p1() const {
-                return point_t{_x1, _m * _x1 + _q};
+            inline Point p1() const {
+                return Point{_x1, _m * _x1 + _q};
             }
 
-            inline bool intersects(const segment_t &s) const {
+            inline Point at(T x) const {
+                return Point{x, _m * x + _q};
+            }
+
+            //template<typename K>
+            inline Point center() const {
+                auto slope = (_x0 + _x1) / 2.0;
+                auto intercept = _m * slope + _q;
+                //assert( (((_m * _x0) + _q) + ((_m * _x1) + _q))/ 2. - intercept < 1.0);
+                return Point{slope, intercept};
+            }
+
+            inline bool intersects(const Segment &s) const {
 
                 auto y0 = s._m * _x0 + s._q;
                 auto y1 = s._m * _x1 + s._q;
@@ -153,11 +136,11 @@ namespace pfa {
                 auto p0y = _m * _x0 + _q;
                 auto p1y = _m * _x1 + _q;
 
-                //return y0 >= p0y && y1 <= p1y;
+                // y0 >= p0y && y1 <= p1y;
                 return (eq(y0, p0y) || y0 > p0y) && (eq(y1, p1y) || y1 < p1y);
             }
 
-            bool operator<(const segment_t &s) const {
+            inline bool operator<(const Segment &s) const {
                 auto sy0 = s._m * _x0 + s._q;
                 auto sy1 = s._m * _x1 + s._q;
 
@@ -168,12 +151,12 @@ namespace pfa {
             }
 
             template<bool Upper>
-            inline segment_t intersection(const segment_t &s) const {
+            inline Segment intersection(const Segment &s) const {
                 T x, y;
 
-                if (segment_t::eq(_m, s._m)) {
-                    assert(segment_t::eq(_q, s._q));
-                    return segment_t{0, p0().y(), p0().x(), p1().x()};
+                if (Segment::eq(_m, s._m)) {
+                    assert(Segment::eq(_q, s._q));
+                    return Segment{0, p0().y(), p0().x(), p1().x()};
                 } else {
                     x = (_q - s._q) / (s._m - _m);
                     y = _m * x + _q;
@@ -181,49 +164,48 @@ namespace pfa {
 
                 if constexpr (Upper) {
                     if (x == p0().x())
-                        return segment_t{0, y, x, p0().x()};
+                        return Segment{0, y, x, p0().x()};
                     auto m = (y - p0().y()) / (x - p0().x());
                     auto q = y - m * x;
-                    return segment_t{m, q, p0().x(), x};
+                    return Segment{m, q, p0().x(), x};
                 } else {
                     if (x == p1().x())
-                        return segment_t{0, y, x, p1().x()};
+                        return Segment{0, y, x, p1().x()};
                     auto m = (y - p1().y()) / (x - p1().x());
                     auto q = y - m * x;
-                    return segment_t{m, q, x, p1().x()};
+                    return Segment{m, q, x, p1().x()};
                 }
             }
         };
 
-        std::vector<segment_t> upper{};
+        std::vector<Segment> upper{};
         uint32_t up_start{0};
-        std::vector<segment_t> lower{};
+        std::vector<Segment> lower{};
         uint32_t lo_start{0};
 
     public:
 
         template<bool upper = true>
-        struct halfplane {
-            segment_t _s;
+        struct HalfPlane {
+            Segment _s;
 
-            constexpr halfplane() = default;
+            constexpr HalfPlane() = default;
 
-            constexpr halfplane(const segment_t &s) : _s{s} {}
+            constexpr HalfPlane(const Segment &s) : _s{s} {}
 
             [[nodiscard]] constexpr bool is_upper() const {
                 return upper;
             }
         };
 
-        using upperbound_t = halfplane<true>;
-        using lowerbound_t = halfplane<false>;
-        using boundaries_t = std::pair<upperbound_t, lowerbound_t>;
+        using UpperBound = HalfPlane<true>;
+        using LowerBound = HalfPlane<false>;
+        using Boundaries = std::pair<UpperBound, LowerBound>;
+        std::optional<Boundaries> init = std::nullopt;
 
-        std::optional<boundaries_t> init = std::nullopt;
-
-        constexpr convex_polygon() {
-            upper.reserve(1 << 18);
-            lower.reserve(1 << 18);
+        constexpr ConvexPolygon() {
+            upper.reserve(1 << 16);
+            lower.reserve(1 << 16);
             assert(empty());
         }
 
@@ -252,7 +234,7 @@ namespace pfa {
         }
 
         template<bool Upper>
-        inline auto cut(const halfplane<Upper> &u) const {
+        inline auto cut(const HalfPlane<Upper> &u) const {
 
             auto index_seg_u = search_intersection(upper.begin() + up_start, upper.end(), u);
             auto index_seg_l = search_intersection(lower.rbegin(), lower.rend() - lo_start, u);
@@ -264,8 +246,8 @@ namespace pfa {
             return std::make_tuple(index_seg_u, index_seg_l, new_seg_u, new_seg_l);
         }
 
-        inline std::variant<std::tuple<size_t, size_t, segment_t, segment_t>, bool> cut_with_upper_bound(
-                const upperbound_t &u) {
+        inline std::variant<std::tuple<size_t, size_t, Segment, Segment>, bool> cut_with_upper_bound(
+                const UpperBound &u) {
 
             auto pr = lower[lo_start].p1();
             auto pl = upper[up_start].p0();
@@ -287,8 +269,8 @@ namespace pfa {
             }
         }
 
-        inline std::variant<std::tuple<size_t, size_t, segment_t, segment_t>, bool> cut_with_lower_bound(
-                const lowerbound_t &l) {
+        inline std::variant<std::tuple<size_t, size_t, Segment, Segment>, bool> cut_with_lower_bound(
+                const LowerBound &l) {
 
             auto pl = upper[up_start].p0();
             auto pr = lower[lo_start].p1();
@@ -311,10 +293,10 @@ namespace pfa {
             }
         }
 
-        inline bool update(const upperbound_t &u, const lowerbound_t &l) {
+        inline bool update(const UpperBound &u, const LowerBound &l) {
             //assert(u1.sign() == 0 && l1.sign() == 1);
             if (empty()) {
-                init = boundaries_t{u, l};
+                init = Boundaries{u, l};
                 return true;
             } else if (is_init()) {
 
@@ -323,9 +305,9 @@ namespace pfa {
                 auto u0 = (s_u0._s.template intersection<false>(l._s)).template intersection<true>(u._s);
                 auto l1 = (s_l0._s.template intersection<false>(l._s)).template intersection<true>(u._s);
 
-                auto u1 = segment_t::from_points(u0.p1(), l1.p1());
+                auto u1 = Segment::from_points(u0.p1(), l1.p1());
                 //assert(su2.p0() == su1.p1() && su2.p1() == sl1.p1());
-                auto l0 = segment_t::from_points(u0.p0(), l1.p0());
+                auto l0 = Segment::from_points(u0.p0(), l1.p0());
                 //assert(sl2.p0() == su1.p0() && sl2.p1() == sl1.p0());
 
                 upper.push_back(u0);
@@ -341,14 +323,14 @@ namespace pfa {
 
                 bool res_l;
                 std::visit(match{
-                        [&](std::tuple<size_t, size_t, segment_t, segment_t> a1) {
+                        [&](std::tuple<size_t, size_t, Segment, Segment> a1) {
                             const auto &[i1, j1, su1, sl1] = a1;
                             up_start += i1;
                             upper[up_start] = su1;
 
-                            const auto new_lower_edge = segment_t::from_points(su1.p0(), sl1.p0());
+                            const auto new_lower_edge = Segment::from_points(su1.p0(), sl1.p0());
                             lower.resize(j1 + lo_start);
-                            //if (!segment_t::eq(sl1._x0, sl1._x1, 5))
+                            //if (!Segment::eq(sl1._x0, sl1._x1, 5))
                             lower.push_back(sl1);
                             lower.push_back(new_lower_edge);
                             res_l = true;
@@ -361,12 +343,12 @@ namespace pfa {
                     bool res_u;
 
                     std::visit(match{
-                            [&](std::tuple<size_t, size_t, segment_t, segment_t> a2) {
+                            [&](std::tuple<size_t, size_t, Segment, Segment> a2) {
                                 const auto &[i2, j2, su2, sl2] = a2;
                                 upper.resize(i2 + up_start);
-                                //if (!segment_t::eq(su2._x0, su2._x1, 5))
+                                //if (!Segment::eq(su2._x0, su2._x1, 5))
                                 upper.push_back(su2);
-                                const auto new_upper_edge = segment_t::from_points(su2.p1(), sl2.p1());
+                                const auto new_upper_edge = Segment::from_points(su2.p1(), sl2.p1());
                                 upper.push_back(new_upper_edge);
 
                                 lo_start += j2;
@@ -389,18 +371,18 @@ namespace pfa {
         inline void clear() {
             upper.clear();
             lower.clear();
-            upper.reserve(1 << 18);
-            lower.reserve(1 << 18);
+            upper.reserve(1 << 16);
+            lower.reserve(1 << 16);
             lo_start = 0;
             up_start = 0;
             init = std::nullopt;
         }
 
-        inline point_t ul() const {
+        inline Point ul() const {
             return upper[up_start].p0();
         }
 
-        inline point_t lr() const {
+        inline Point lr() const {
             return lower[lo_start].p1();
         }
 
@@ -408,5 +390,13 @@ namespace pfa {
             return init.has_value();
         }
 
+        inline Segment diagonal() const {
+            if (is_init()) {
+                auto [u, l] = init.value();
+                return Segment::from_points(u._s.at(0), l._s.at(0));
+            } else {
+                return Segment::from_points(ul(), lr());
+            }
+        }
     };
 }

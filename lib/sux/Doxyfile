@@ -231,7 +231,7 @@ INHERIT_DOCS           = YES
 SEPARATE_MEMBER_PAGES  = NO
 
 # The TAB_SIZE tag can be used to set the number of spaces in a tab. Doxygen
-# uses this value to replace tabs by spaces in code fragments.
+# uses this value to replace tabs by spaces in code _fragments.
 # Minimum value: 1, maximum value: 16, default value: 4.
 
 TAB_SIZE               = 4
@@ -927,7 +927,7 @@ EXCLUDE_PATTERNS       =
 EXCLUDE_SYMBOLS        =
 
 # The EXAMPLE_PATH tag can be used to specify one or more files or directories
-# that contain example code fragments that are included (see the \include
+# that contain example code _fragments that are included (see the \include
 # command).
 
 EXAMPLE_PATH           =
@@ -1028,7 +1028,7 @@ SOURCE_BROWSER         = NO
 INLINE_SOURCES         = NO
 
 # Setting the STRIP_CODE_COMMENTS tag to YES will instruct doxygen to hide any
-# special comment blocks from generated source code fragments. Normal C, C++ and
+# special comment blocks from generated source code _fragments. Normal C, C++ and
 # Fortran comments will always remain visible.
 # The default value is: YES.
 

@@ -20,7 +20,7 @@ void lossy_compression(const auto &fn, std::ostream &out, bool first_size = true
     auto compression_time = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
 
 
-    //std::cout << "Number of segments: " << lc.num_partitions() << std::endl;
+    //std::cout << "Number of _fragments: " << lc.num_partitions() << std::endl;
     std::size_t decompression_time;
     auto num_runs = 1000;
     t1 = std::chrono::high_resolution_clock::now();
@@ -105,7 +105,7 @@ void pla_compression(const auto &fn, std::ostream &out, bool first_size = true) 
     compressed_bit_size += res.size() * sizeof(T1) * 8; // slope
     compressed_bit_size += res.size() * sizeof(T2) * 8; // intercept
 
-    //std::cout << "Number of segments: " << res.size() << std::endl;
+    //std::cout << "Number of _fragments: " << res.size() << std::endl;
 
     auto cr = (long double) (compressed_bit_size) / (long double) (uncompressed_bit_size);
     auto compression_speed = ((uncompressed_bit_size / 8) / 1e6) / (compression_time / 1e9);
