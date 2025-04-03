@@ -1,0 +1,26 @@
+LIB_DIR = /usr/local/lib
+INC_DIR = /usr/local/include
+MY_CXX_FLAGS=-std=c++14  -march=native -mtune=native -mfpmath=sse -mavx512f -ffloat-store -fno-math-errno
+MY_CXX_OPT_FLAGS=-O3 -DNDEBUG -msse4.2 -mbmi -mbmi2 -Wall -Wextra -pedantic -funroll-loops -D__extern_always_inline="extern __always_inline"  -ffast-math
+MY_CXX=/home/citypost/.local/bin/g++
+MY_CC=/home/citypost/.local/bin/gcc
+
+# Returns $1-th .-separated part of string $2.
+dim = $(word $1, $(subst ., ,$2))
+
+# Returns value stored in column $3 for item with ID $2 in 
+# config file $1
+config_select=$(shell cat $1 | grep -v "^\#" | grep "$2;" | cut -f $3 -d';' )
+
+# Returns value stored in column $3 for a line matching $2
+# in config file $1
+config_filter=$(shell cat $1 | grep -v "^\#" | fgrep "$2" | cut -f $3 -d';' )
+
+# Get all IDs from a config file $1
+config_ids=$(shell cat $1 | grep -v "^\#" | cut -f 1 -d';')
+
+# Get column $2 from a config file $1
+config_column=$(shell cat $1 | grep -v "^\#" | cut -f $2 -d';')
+
+# Get size of file $1 in bytes
+file_size=$(shell wc -c < $1 | tr -d ' ')

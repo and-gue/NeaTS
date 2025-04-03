@@ -1,0 +1,43 @@
+include (DetectCPUFeatures)
+include (FindCxaDemangle)
+
+checkandappendcompilerflags (${CMAKE_BUILD_TYPE} "-Wall")
+checkandappendcompilerflags (${CMAKE_BUILD_TYPE} "-Werror")
+checkandappendcompilerflags (${CMAKE_BUILD_TYPE} "-Wextra")
+checkandappendcompilerflags (${CMAKE_BUILD_TYPE} "-pedantic")
+checkandappendcompilerflags ("Release" "-funroll-loops")
+checkandappendcompilerflags ("Release" "-D__extern_always_inline=\"extern __always_inline\" ")
+
+# Clang <= 9 has trouble on ubuntu 20.04
+set (CMAKE_REQUIRED_FLAGS "-ffast-math")
+file (READ "${CMAKE_MODULE_PATH}/ffast_math.cpp" test_source_ffast_math)
+check_cxx_source_runs ("${test_source_ffast_math}" HAVE_FFAST_MATH)
+set (CMAKE_REQUIRED_FLAGS "")
+if (HAVE_FFAST_MATH)
+    checkandappendcompilerflags ("Release" "-ffast-math")
+endif ()
+
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+    checkandappendcompilerflags ("Release" "-no-inline-min-size -no-inline-max-size")
+endif ()
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    checkandappendcompilerflags ("Release" "/EHsc")
+    checkandappendcompilerflags ("Debug" "/Od")
+    checkandappendcompilerflags ("Release" "/Ox")
+    set (vars CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_MINSIZEREL
+              CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+    foreach (var ${vars})
+        string (REPLACE "/MD" "-MT" ${var} "${${var}}")
+    endforeach (var)
+    add_definitions ("/DMSVC_COMPILER")
+endif ()
+
+if (CODE_COVERAGE)
+    checkandappendcompilerflags ("Debug" "-g -fprofile-arcs -ftest-coverage -lgcov")
+endif ()
+
+if (APPLE)
+    if (USE_LIBCPP AND ("${CMAKE_CXX_COMPILER_ID}" MATCHES "^(Apple)?Clang$"))
+        checkandappendcompilerflags (${CMAKE_BUILD_TYPE} "-stdlib=libc++")
+    endif ()
+endif ()
