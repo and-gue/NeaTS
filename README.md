@@ -1,7 +1,7 @@
 # NeaTS: Learned Compression of Nonlinear Time Series With Random Access
 
 <p align="center">
-  <strong>NeaTS</strong> is a learned compressor for integer time series that uniquely combines superior compression ratios, surpassing state-of-the-art methods, with significantly faster decompression, range queries performance, and random access speeds.
+  <strong>NeaTS</strong> is a learned compressor for time series providing, simultaneously, compression ratios close to or better than the best existing compressors, a faster decompression speed, and orders of magnitude more efficient random access.
 </p>
 
 ---
@@ -53,6 +53,8 @@ make -j$(nproc)
 - data.bin — Binary file of 64-bit signed integers
 - `<bpc>` — Maximum residual (size in bits)
 
+The datasets used in the paper are available at this link: [NeaTS Datasets](https://data.d4science.org/shub/E_RkVUaEd2UmVuRzlIcVkzVW54NjZTNHZ6TmFmSWh2T0ZNWGRmay9od0xqK0hqbkl6akNIMTVqay9PWU5kaUUxaA==)
+
 ---
 
 ## 📚 Citation
@@ -60,7 +62,7 @@ make -j$(nproc)
 If you use NeaTS for research, please cite:
 ```
 @inproceedings{guerra2025neats,
-  author    = {Guerra, Alessandro and Vinciguerra, Giuseppe and Boffa, Alessandro and Ferragina, Paolo},
+  author    = {Guerra, Andrea and Vinciguerra, Giorgio and Boffa, Antonio and Ferragina, Paolo},
   title     = {Learned Compression of Nonlinear Time Series with Random Access},
   booktitle = {2025 IEEE 41st International Conference on Data Engineering (ICDE)},
   year      = {2025},
